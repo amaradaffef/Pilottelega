@@ -6,6 +6,10 @@ présent dans plusieurs (et lesquels).
 
 > Projet **public et gratuit** sous licence [MIT](LICENSE).
 
+**Multi-langue** : interface en **Français / English / Русский** (sélecteur en haut de
+fenêtre, langue mémorisée). **Export Excel** : chaque onglet de groupe et l'onglet Analyse
+exportent leurs données en `.xlsx`.
+
 ## Conformité & confidentialité
 
 - L'application ne lit **que** ce que votre compte peut légitimement consulter et **affiche

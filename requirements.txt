@@ -2,6 +2,7 @@
 PySide6>=6.6
 Telethon>=1.34
 qasync>=0.27
+openpyxl>=3.1
 
 # Dev / tests / qualité
 pytest>=8.0

@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from pilottelega.app import paths, settings
+from pilottelega.app import i18n, paths, preferences, settings
 from pilottelega.app.logging_conf import get_logger
 
 logger = get_logger(__name__)
@@ -29,6 +29,9 @@ def main() -> int:
     from pilottelega.core.telegram_service import TelegramService
     from pilottelega.ui.main_window import MainWindow
     from pilottelega.ui.onboarding import OnboardingDialog
+
+    # Applique la langue mémorisée (FR/EN/RU) avant de construire l'interface.
+    i18n.set_language(preferences.load_language())
 
     app = QApplication(sys.argv)
     loop = QEventLoop(app)
