@@ -1,6 +1,11 @@
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+Active feature: **001-members-overlap**.
+For technologies, project structure, and design details, read the current plan:
+`specs/001-members-overlap/plan.md` (+ research.md, data-model.md, contracts/, quickstart.md).
+
+Stack (figée) : Python 3.11+, PySide6 (UI), Telethon (API Telegram), qasync (pont async),
+données en mémoire, PyInstaller pour l'`.exe`. Structure MVC : `core/` (logique pure testable),
+`ui/` (PySide6), `app/` (config/bootstrap qasync).
 <!-- SPECKIT END -->
 
 ## Projet : Pilottelega
