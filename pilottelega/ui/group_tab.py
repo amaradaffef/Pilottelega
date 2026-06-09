@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 
 from pilottelega.app.i18n import tr
 from pilottelega.app.logging_conf import get_logger
-from pilottelega.core.export import export_group_to_xlsx
+from pilottelega.core.export import GROUP_COLUMNS, export_group_to_xlsx, member_row
 from pilottelega.core.models import AccessStatus, TargetGroup
 
 logger = get_logger(__name__)
@@ -49,12 +49,13 @@ class GroupTab(QWidget):
         self.export_btn.clicked.connect(self.on_export)
         layout.addWidget(self.export_btn)
 
-        self.table = QTableWidget(len(group.members), 2)
+        self.table = QTableWidget(len(group.members), len(GROUP_COLUMNS))
+        self.table.setHorizontalHeaderLabels(GROUP_COLUMNS)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         for row, member in enumerate(group.members):
-            self.table.setItem(row, 0, QTableWidgetItem(member.label))
-            self.table.setItem(row, 1, QTableWidgetItem(str(member.user_id)))
+            for col, value in enumerate(member_row(member)):
+                self.table.setItem(row, col, QTableWidgetItem(str(value)))
         layout.addWidget(self.table)
 
         self.retranslate()
@@ -70,7 +71,7 @@ class GroupTab(QWidget):
         """Met à jour les textes selon la langue courante."""
         self.badge.setText(self._status_text())
         self.export_btn.setText(tr("common.export_excel"))
-        self.table.setHorizontalHeaderLabels([tr("group.member_col"), tr("group.id_col")])
+        # Les en-têtes de colonnes sont des noms de champs techniques (non traduits).
 
     def on_export(self) -> None:
         """Exporte les membres du groupe vers un fichier Excel."""

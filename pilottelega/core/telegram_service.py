@@ -27,6 +27,33 @@ class LoginStep(StrEnum):
     PASSWORD_REQUIRED = "password_required"
 
 
+def format_last_seen(user: Any) -> str | None:
+    """Représente la dernière connexion d'un utilisateur en chaîne exportable.
+
+    Si le statut porte une date (``UserStatusOffline.was_online``), on l'exporte en ISO ;
+    sinon on retourne une valeur lisible (online, recently, last_week…). Détection par nom
+    de classe pour éviter d'importer les types Telethon.
+    """
+    status = getattr(user, "status", None)
+    if status is None:
+        return None
+    was_online = getattr(status, "was_online", None)
+    if was_online is not None:
+        try:
+            return was_online.isoformat()
+        except AttributeError:
+            return str(was_online)
+    mapping = {
+        "UserStatusOnline": "online",
+        "UserStatusRecently": "recently",
+        "UserStatusLastWeek": "last_week",
+        "UserStatusLastMonth": "last_month",
+        "UserStatusOffline": "offline",
+        "UserStatusEmpty": "",
+    }
+    return mapping.get(type(status).__name__, type(status).__name__)
+
+
 def classify_access_error(exc: Exception) -> AccessStatus:
     """Mappe une exception Telethon vers un ``AccessStatus`` (sans importer Telethon).
 
@@ -113,13 +140,19 @@ class TelegramService:
     @staticmethod
     def _to_member(user: Any) -> Member:
         """Convertit un participant Telethon en ``Member`` (identité = ``user.id``)."""
-        first = getattr(user, "first_name", "") or ""
-        last = getattr(user, "last_name", "") or ""
-        display = f"{first} {last}".strip()
+        first = getattr(user, "first_name", None)
+        last = getattr(user, "last_name", None)
+        display = f"{first or ''} {last or ''}".strip()
         return Member(
             user_id=user.id,
             username=getattr(user, "username", None),
             display_name=display,
+            first_name=first,
+            last_name=last,
+            is_bot=bool(getattr(user, "bot", False)),
+            is_premium=bool(getattr(user, "premium", False)),
+            is_deleted=bool(getattr(user, "deleted", False)),
+            last_seen=format_last_seen(user),
         )
 
     async def fetch_group(self, identifier: str) -> TargetGroup:

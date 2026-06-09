@@ -38,12 +38,19 @@ class Member:
     """Une personne appartenant à un ou plusieurs groupes.
 
     L'identité inter-groupes repose sur ``user_id`` (stable et immuable, FR-012).
-    Le ``username`` est optionnel et ne sert qu'à l'affichage.
+    Le ``username`` est optionnel et ne sert qu'à l'affichage. Les autres champs
+    (nom, indicateurs bot/premium/supprimé, dernière connexion) sont exportés.
     """
 
     user_id: int
     username: str | None = None
     display_name: str = ""
+    first_name: str | None = None
+    last_name: str | None = None
+    is_bot: bool = False
+    is_premium: bool = False
+    is_deleted: bool = False
+    last_seen: str | None = None
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Member) and other.user_id == self.user_id

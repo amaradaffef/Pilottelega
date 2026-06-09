@@ -10,10 +10,36 @@ from collections.abc import Callable
 
 from openpyxl import Workbook
 
-from pilottelega.core.models import AnalysisResult, TargetGroup
+from pilottelega.core.models import AnalysisResult, Member, TargetGroup
 
 # Excel limite les noms d'onglets à 31 caractères.
 _MAX_SHEET_NAME = 31
+
+# Colonnes des membres (en-têtes techniques, identiques à l'export et à la table UI).
+GROUP_COLUMNS: list[str] = [
+    "user_id",
+    "username",
+    "first_name",
+    "last_name",
+    "is_bot",
+    "is_premium",
+    "is_deleted",
+    "last_seen",
+]
+
+
+def member_row(member: Member) -> list[object]:
+    """Ligne de valeurs d'un membre, dans l'ordre de :data:`GROUP_COLUMNS`."""
+    return [
+        member.user_id,
+        member.username or "",
+        member.first_name or "",
+        member.last_name or "",
+        member.is_bot,
+        member.is_premium,
+        member.is_deleted,
+        member.last_seen or "",
+    ]
 
 
 def _sheet_name(name: str) -> str:
@@ -23,13 +49,13 @@ def _sheet_name(name: str) -> str:
 def export_group_to_xlsx(
     group: TargetGroup, path: str, t: Callable[[str], str] = lambda k: k
 ) -> None:
-    """Écrit les membres d'un ``TargetGroup`` dans un fichier ``.xlsx``."""
+    """Écrit les membres d'un ``TargetGroup`` dans un fichier ``.xlsx`` (toutes colonnes)."""
     wb = Workbook()
     ws = wb.active
     ws.title = _sheet_name(t("export.sheet_group"))
-    ws.append([t("group.member_col"), t("export.username_col"), t("group.id_col")])
+    ws.append(GROUP_COLUMNS)
     for member in group.members:
-        ws.append([member.display_name or "", member.username or "", member.user_id])
+        ws.append(member_row(member))
     wb.save(path)
 
 

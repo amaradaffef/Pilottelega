@@ -5,7 +5,11 @@ from __future__ import annotations
 from openpyxl import load_workbook
 
 from pilottelega.core.analysis import compute_overlap
-from pilottelega.core.export import export_analysis_to_xlsx, export_group_to_xlsx
+from pilottelega.core.export import (
+    GROUP_COLUMNS,
+    export_analysis_to_xlsx,
+    export_group_to_xlsx,
+)
 from pilottelega.core.models import AccessStatus, Member, TargetGroup
 
 
@@ -19,25 +23,41 @@ def _group(handle, members):
     )
 
 
-def test_export_group_writes_members(tmp_path):
-    group = _group("alpha", [Member(1, "alice", "Alice"), Member(2, None, "Bob")])
+def test_export_group_writes_all_fields(tmp_path):
+    members = [
+        Member(
+            user_id=1,
+            username="alice",
+            display_name="Alice A",
+            first_name="Alice",
+            last_name="A",
+            is_premium=True,
+            last_seen="2026-06-01T10:00:00",
+        ),
+        Member(user_id=2, username=None, display_name="Botty", first_name="Botty", is_bot=True),
+    ]
+    group = _group("alpha", members)
     path = tmp_path / "group.xlsx"
     export_group_to_xlsx(group, str(path))
 
     ws = load_workbook(path).active
     rows = list(ws.iter_rows(values_only=True))
-    assert rows[0] == ("group.member_col", "export.username_col", "group.id_col")  # clés brutes
-    assert rows[1] == ("Alice", "alice", 1)
-    assert rows[2] == ("Bob", None, 2)
-
-
-def test_export_group_with_translator(tmp_path):
-    group = _group("alpha", [Member(1, "alice", "Alice")])
-    path = tmp_path / "group_fr.xlsx"
-    export_group_to_xlsx(group, str(path), t=lambda k: {"group.member_col": "Membre"}.get(k, k))
-
-    ws = load_workbook(path).active
-    assert ws.cell(row=1, column=1).value == "Membre"
+    # En-têtes = tous les champs demandés, dans l'ordre.
+    assert list(rows[0]) == GROUP_COLUMNS
+    assert rows[0] == (
+        "user_id",
+        "username",
+        "first_name",
+        "last_name",
+        "is_bot",
+        "is_premium",
+        "is_deleted",
+        "last_seen",
+    )
+    # Alice : premium, dernière connexion datée.
+    assert rows[1] == (1, "alice", "Alice", "A", False, True, False, "2026-06-01T10:00:00")
+    # Bob : bot, pas de username (cellules vides relues None par openpyxl).
+    assert rows[2] == (2, None, "Botty", None, True, False, False, None)
 
 
 def test_export_analysis_two_sheets(tmp_path):
