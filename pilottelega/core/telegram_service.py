@@ -11,6 +11,7 @@ Principe III : toutes les opérations réseau sont ``async`` (consommées via qa
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from enum import StrEnum
 from typing import Any
 
@@ -75,11 +76,14 @@ class TelegramService:
         api_hash: str,
         session_path: str,
         client_factory: Callable[[], Any] | None = None,
+        about_fetcher: Callable[[Any, int], Any] | None = None,
     ) -> None:
         self.api_id = api_id
         self.api_hash = api_hash
         self.session_path = session_path
         self._client_factory = client_factory or self._default_client_factory
+        # Récupérateur de bio injectable (testable sans Telethon).
+        self._about_fetcher = about_fetcher or self._default_about_fetcher
         self._client: Any | None = None
         self._phone: str | None = None
 
@@ -88,6 +92,16 @@ class TelegramService:
         from telethon import TelegramClient
 
         return TelegramClient(self.session_path, self.api_id, self.api_hash)
+
+    async def _default_about_fetcher(self, client: Any, user_id: int) -> str | None:
+        """Récupère la bio (« about ») d'un utilisateur via une requête « full user ».
+
+        Coûteux (une requête réseau par membre) : utilisé seulement si l'option est activée.
+        """
+        from telethon.tl.functions.users import GetFullUserRequest
+
+        full = await client(GetFullUserRequest(user_id))
+        return getattr(full.full_user, "about", None)
 
     async def _ensure_client(self) -> Any:
         """Crée et connecte le client si nécessaire, puis le retourne."""
@@ -153,13 +167,25 @@ class TelegramService:
             is_premium=bool(getattr(user, "premium", False)),
             is_deleted=bool(getattr(user, "deleted", False)),
             last_seen=format_last_seen(user),
+            phone=getattr(user, "phone", None),
         )
 
-    async def fetch_group(self, identifier: str) -> TargetGroup:
+    async def _with_description(self, client: Any, member: Member) -> Member:
+        """Retourne une copie du membre enrichie de sa bio (best-effort, jamais bloquant)."""
+        try:
+            about = await self._about_fetcher(client, member.user_id)
+        except Exception as exc:  # noqa: BLE001 - une bio manquante ne casse pas le fetch
+            logger.warning("Bio indisponible pour %s: %s", member.user_id, type(exc).__name__)
+            return member
+        return replace(member, description=about)
+
+    async def fetch_group(self, identifier: str, fetch_descriptions: bool = False) -> TargetGroup:
         """Récupère les membres d'un groupe et en déduit le ``AccessStatus``.
 
-        N'élève jamais d'exception sur un accès refusé : encode le statut (FR-008/010/011).
-        L'échec d'un groupe n'affecte pas les autres (FR-007).
+        Si ``fetch_descriptions`` est vrai, complète la bio de chaque membre via une requête
+        « full user » (lent, une requête par membre). N'élève jamais d'exception sur un accès
+        refusé : encode le statut (FR-008/010/011). L'échec d'un groupe n'affecte pas les
+        autres (FR-007).
         """
         client = await self._ensure_client()
         group = TargetGroup(raw_input=identifier, identifier=identifier)
@@ -168,6 +194,8 @@ class TelegramService:
             group.title = getattr(entity, "title", None)
             group.handle = getattr(entity, "username", None)
             members = [self._to_member(user) async for user in client.iter_participants(entity)]
+            if fetch_descriptions:
+                members = [await self._with_description(client, m) for m in members]
             group.members = members
             group.access_status = AccessStatus.FULL if members else AccessStatus.PARTIAL_HIDDEN
         except Exception as exc:  # noqa: BLE001 - statut encodé, pas de propagation (FR-011)

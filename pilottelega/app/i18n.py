@@ -49,6 +49,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         # Fenêtre principale
         "main.links_label": "Collez les liens de groupes (un par ligne) :",
         "main.fetch": "Récupérer les membres",
+        "main.fetch_descriptions": "Récupérer aussi les descriptions/bios (plus lent)",
         "main.no_valid_links": "Aucun lien valide à récupérer.",
         "main.fetching": "Récupération de {id}…",
         "main.fetched_summary": "{count} groupe(s) récupéré(s).",
@@ -105,6 +106,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "onboarding.welcome": "Signed in successfully. Welcome!",
         "main.links_label": "Paste group links (one per line):",
         "main.fetch": "Fetch members",
+        "main.fetch_descriptions": "Also fetch descriptions/bios (slower)",
         "main.no_valid_links": "No valid link to fetch.",
         "main.fetching": "Fetching {id}…",
         "main.fetched_summary": "{count} group(s) fetched.",
@@ -158,6 +160,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "onboarding.welcome": "Вход выполнен. Добро пожаловать!",
         "main.links_label": "Вставьте ссылки на группы (по одной в строке):",
         "main.fetch": "Получить участников",
+        "main.fetch_descriptions": "Также получать описания/био (медленнее)",
         "main.no_valid_links": "Нет действительных ссылок.",
         "main.fetching": "Получение {id}…",
         "main.fetched_summary": "Получено групп: {count}.",

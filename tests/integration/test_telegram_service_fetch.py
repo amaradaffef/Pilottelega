@@ -83,3 +83,27 @@ async def test_fetch_error_on_entity_failure():
     group = await _service(client).fetch_group("@g")
     assert group.access_status is AccessStatus.ERROR
     assert group.error_message
+
+
+async def test_fetch_without_descriptions_leaves_bio_empty():
+    users = [FakeUser(1, "alice", "Alice")]
+    group = await _service(FakeClient(users=users)).fetch_group("@g")
+    assert group.members[0].description is None
+
+
+async def test_fetch_with_descriptions_uses_about_fetcher():
+    users = [FakeUser(1, "alice", "Alice"), FakeUser(2, "bob", "Bob")]
+
+    async def fake_about(client, user_id):
+        return f"bio-{user_id}"
+
+    service = TelegramService(
+        1,
+        "hash",
+        "ignored",
+        client_factory=lambda: FakeClient(users=users),
+        about_fetcher=fake_about,
+    )
+    group = await service.fetch_group("@g", fetch_descriptions=True)
+    bios = {m.user_id: m.description for m in group.members}
+    assert bios == {1: "bio-1", 2: "bio-2"}

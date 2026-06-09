@@ -51,6 +51,8 @@ class Member:
     is_premium: bool = False
     is_deleted: bool = False
     last_seen: str | None = None
+    phone: str | None = None
+    description: str | None = None
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Member) and other.user_id == self.user_id

@@ -25,6 +25,7 @@ class FakeUser:
         self.premium = kwargs.get("premium", False)
         self.deleted = kwargs.get("deleted", False)
         self.status = kwargs.get("status")
+        self.phone = kwargs.get("phone")
 
 
 def test_to_member_extracts_all_fields():
@@ -53,6 +54,13 @@ def test_to_member_bot_and_missing_fields():
     assert member.is_bot is True
     assert member.username is None
     assert member.last_seen is None
+    assert member.phone is None
+    assert member.description is None  # bio jamais récupérée sans option dédiée
+
+
+def test_to_member_extracts_phone():
+    member = TelegramService._to_member(FakeUser(id=9, phone="+33123456789"))
+    assert member.phone == "+33123456789"
 
 
 class FakeStatusRecently:

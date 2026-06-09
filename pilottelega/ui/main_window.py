@@ -8,6 +8,7 @@ Interface traduisible (FR/EN/RU) avec sélecteur de langue.
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QHBoxLayout,
     QLabel,
@@ -65,6 +66,9 @@ class MainWindow(QMainWindow):
         self.links_edit.setMaximumHeight(120)
         layout.addWidget(self.links_edit)
 
+        self.descr_check = QCheckBox()
+        layout.addWidget(self.descr_check)
+
         self.fetch_btn = QPushButton()
         self.fetch_btn.clicked.connect(self.on_fetch)
         layout.addWidget(self.fetch_btn)
@@ -91,6 +95,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(tr("app.title"))
         self.lang_label.setText(tr("common.language"))
         self.links_label.setText(tr("main.links_label"))
+        self.descr_check.setText(tr("main.fetch_descriptions"))
         self.fetch_btn.setText(tr("main.fetch"))
         self.tabs.setTabText(self.tabs.indexOf(self.analysis_tab), tr("main.analysis_tab"))
         for index in range(self.tabs.count()):
@@ -118,9 +123,12 @@ class MainWindow(QMainWindow):
         self.progress.setRange(0, len(valid))
         self.progress.setValue(0)
 
+        fetch_descriptions = self.descr_check.isChecked()
         for index, identifier in enumerate(valid, start=1):
             self.status.setText(tr("main.fetching", id=identifier))
-            group = await self.service.fetch_group(identifier)
+            group = await self.service.fetch_group(
+                identifier, fetch_descriptions=fetch_descriptions
+            )
             self._add_group_tab(group)
             self.progress.setValue(index)
 
