@@ -33,8 +33,7 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# PyInstaller
-*.spec
+# PyInstaller (on versionne pilottelega.spec, on ignore les sorties de build)
 build/
 dist/
 
