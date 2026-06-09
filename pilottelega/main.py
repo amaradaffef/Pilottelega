@@ -34,6 +34,11 @@ def main() -> int:
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
+    # L'événement de fermeture permet de quitter proprement la boucle qasync quand
+    # la dernière fenêtre est fermée (sinon run_forever ne rendrait jamais la main).
+    app_close = asyncio.Event()
+    app.aboutToQuit.connect(app_close.set)
+
     config = settings.load_config()
     service: TelegramService | None = None
     if config and config.is_complete():
@@ -43,9 +48,12 @@ def main() -> int:
             session_path=str(paths.session_path()),
         )
 
-    async def _route() -> None:
-        """Décide de l'écran de départ selon l'existence d'une session valide."""
-        nonlocal service
+    # Référence conservée pour empêcher le garbage collector de fermer la fenêtre
+    # dès la fin de la coroutine de routage (cause classique de « rien ne s'affiche »).
+    windows: list[object] = []
+
+    async def _run() -> None:
+        """Choisit l'écran de départ (FR-005) puis attend la fermeture de l'application."""
         authorized = False
         if service is not None:
             try:
@@ -55,15 +63,16 @@ def main() -> int:
                 authorized = False
 
         if authorized and service is not None:
-            window = MainWindow(service)
-            window.show()
+            window: object = MainWindow(service)
         else:
-            dialog = OnboardingDialog()
-            dialog.show()
+            window = OnboardingDialog()
+        windows.append(window)
+        window.show()  # type: ignore[attr-defined]
+
+        await app_close.wait()
 
     with loop:
-        loop.create_task(_route())
-        loop.run_forever()
+        loop.run_until_complete(_run())
     return 0
 
 
