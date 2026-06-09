@@ -37,3 +37,6 @@ Thumbs.db
 *.spec
 build/
 dist/
+
+# Exports Excel (donnees utilisateur - ne pas versionner)
+*.xlsx
