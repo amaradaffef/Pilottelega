@@ -27,11 +27,11 @@ l'implémentation correspondante (Red → Green).
 
 **Purpose**: initialisation du projet et de l'outillage qualité.
 
-- [ ] T001 Créer la structure du projet (packages + `__init__.py`) : `pilottelega/{app,core,ui}/`, `tests/{unit,integration}/`, dossier `resources/` — conforme à plan.md
-- [ ] T002 [P] Créer `pyproject.toml` : dépendances (PySide6, Telethon, qasync) + dev (pytest, ruff, black) + config Black/Ruff/pytest + type hints
-- [ ] T003 [P] Créer `requirements.txt` (runtime + dev) cohérent avec `pyproject.toml`
-- [ ] T004 [P] Créer le workflow CI `.github/workflows/ci.yml` : `ruff check .`, `black --check .`, `pytest` à chaque push/PR
-- [ ] T005 [P] Créer `README.md` (description, prérequis, install dev, `python -m pilottelega`, licence MIT, mention conformité Telegram/RGPD)
+- [x] T001 Créer la structure du projet (packages + `__init__.py`) : `pilottelega/{app,core,ui}/`, `tests/{unit,integration}/`, dossier `resources/` — conforme à plan.md
+- [x] T002 [P] Créer `pyproject.toml` : dépendances (PySide6, Telethon, qasync) + dev (pytest, ruff, black) + config Black/Ruff/pytest + type hints
+- [x] T003 [P] Créer `requirements.txt` (runtime + dev) cohérent avec `pyproject.toml`
+- [x] T004 [P] Créer le workflow CI `.github/workflows/ci.yml` : `ruff check .`, `black --check .`, `pytest` à chaque push/PR
+- [x] T005 [P] Créer `README.md` (description, prérequis, install dev, `python -m pilottelega`, licence MIT, mention conformité Telegram/RGPD)
 
 **Checkpoint**: projet lançable et outillage qualité en place.
 
@@ -41,11 +41,11 @@ l'implémentation correspondante (Red → Green).
 
 **Purpose**: socle partagé par toutes les user stories. ⚠️ AUCUNE user story ne démarre avant.
 
-- [ ] T006 [P] Créer le modèle de données dans `pilottelega/core/models.py` : enum `AccessStatus` (FULL/PARTIAL_HIDDEN/ADMIN_REQUIRED/ERROR), dataclasses `Member` (égalité/hash sur `user_id`), `TargetGroup`, `AnalysisResult` — conforme à data-model.md. Aucun import Qt.
-- [ ] T007 [P] Créer `pilottelega/app/paths.py` : résolution de `%APPDATA%/Pilottelega/` (config + chemin session)
-- [ ] T008 [P] Créer `pilottelega/app/logging_conf.py` : configuration du module `logging` (pas de `print`), niveau + format, jamais de secret loggé
-- [ ] T009 Créer `pilottelega/app/settings.py` : lecture/écriture locale de `api_id`/`api_hash`/`phone` (dépend de T007)
-- [ ] T010 Créer `pilottelega/main.py` : bootstrap **qasync** (`QApplication` + `QEventLoop`, `run_forever`) et squelette de routage au démarrage (dépend de T006, T009). Le câblage qasync est posé ici (Principe III, dès le 1er appel réseau).
+- [x] T006 [P] Créer le modèle de données dans `pilottelega/core/models.py` : enum `AccessStatus` (FULL/PARTIAL_HIDDEN/ADMIN_REQUIRED/ERROR), dataclasses `Member` (égalité/hash sur `user_id`), `TargetGroup`, `AnalysisResult` — conforme à data-model.md. Aucun import Qt.
+- [x] T007 [P] Créer `pilottelega/app/paths.py` : résolution de `%APPDATA%/Pilottelega/` (config + chemin session)
+- [x] T008 [P] Créer `pilottelega/app/logging_conf.py` : configuration du module `logging` (pas de `print`), niveau + format, jamais de secret loggé
+- [x] T009 Créer `pilottelega/app/settings.py` : lecture/écriture locale de `api_id`/`api_hash`/`phone` (dépend de T007)
+- [x] T010 Créer `pilottelega/main.py` : bootstrap **qasync** (`QApplication` + `QEventLoop`, `run_forever`) et squelette de routage au démarrage (dépend de T006, T009). Le câblage qasync est posé ici (Principe III, dès le 1er appel réseau).
 
 **Checkpoint**: socle prêt — les user stories peuvent commencer.
 
@@ -61,14 +61,14 @@ fermer/rouvrir → l'écran principal s'ouvre sans ressaisie.
 
 ### Tests for User Story 1 ⚠️ (écrire d'abord, doivent échouer)
 
-- [ ] T011 [P] [US1] Test d'intégration `tests/integration/test_telegram_service_login.py` (mocks Telethon) : `is_authorized`, `start_login`, `submit_code` → CONNECTED / PASSWORD_REQUIRED, `submit_password`
+- [x] T011 [P] [US1] Test d'intégration `tests/integration/test_telegram_service_login.py` (mocks Telethon) : `is_authorized`, `start_login`, `submit_code` → CONNECTED / PASSWORD_REQUIRED, `submit_password`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implémenter le cycle de login dans `pilottelega/core/telegram_service.py` : `TelegramService(api_id, api_hash, session_path)`, `is_authorized`, `start_login`, `submit_code`, `submit_password`, persistance locale de la session — façade `async`, aucun import Qt (contracts/telegram-service.md)
-- [ ] T013 [US1] Créer l'écran d'onboarding `pilottelega/ui/onboarding.py` : explication + lien cliquable vers la page de génération, champs `api_id`/`api_hash`/téléphone, code, mot de passe 2FA ; appels `await` via qasync avec indicateur de progression (contracts/ui-screens.md)
-- [ ] T014 [US1] Compléter le routage dans `pilottelega/main.py` : si `is_authorized()` → fenêtre principale, sinon onboarding (FR-005) (dépend de T010, T012, T013)
-- [ ] T015 [US1] Gestion d'erreurs + `logging` du flux de login : messages clairs, saisie corrigeable, pas de plantage, détection session expirée → retour onboarding (FR-017)
+- [x] T012 [US1] Implémenter le cycle de login dans `pilottelega/core/telegram_service.py` : `TelegramService(api_id, api_hash, session_path)`, `is_authorized`, `start_login`, `submit_code`, `submit_password`, persistance locale de la session — façade `async`, aucun import Qt (contracts/telegram-service.md)
+- [x] T013 [US1] Créer l'écran d'onboarding `pilottelega/ui/onboarding.py` : explication + lien cliquable vers la page de génération, champs `api_id`/`api_hash`/téléphone, code, mot de passe 2FA ; appels `await` via qasync avec indicateur de progression (contracts/ui-screens.md)
+- [x] T014 [US1] Compléter le routage dans `pilottelega/main.py` : si `is_authorized()` → fenêtre principale, sinon onboarding (FR-005) (dépend de T010, T012, T013)
+- [x] T015 [US1] Gestion d'erreurs + `logging` du flux de login : messages clairs, saisie corrigeable, pas de plantage, détection session expirée → retour onboarding (FR-017)
 
 **Checkpoint**: US1 fonctionnelle et testable seule (connexion + persistance de session).
 
@@ -84,16 +84,16 @@ groupe avec membres + statut d'accès cohérent ; une ligne invalide n'interromp
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T016 [P] [US2] Test unitaire `tests/unit/test_link_parser.py` : `normalize_link` (formes valides/invalides), `parse_links` (déduplication, lignes vides, invalides collectées)
-- [ ] T017 [P] [US2] Test d'intégration `tests/integration/test_telegram_service_fetch.py` (mocks Telethon) : `fetch_group` produit chaque `AccessStatus` (FULL / PARTIAL_HIDDEN / ADMIN_REQUIRED / ERROR)
+- [x] T016 [P] [US2] Test unitaire `tests/unit/test_link_parser.py` : `normalize_link` (formes valides/invalides), `parse_links` (déduplication, lignes vides, invalides collectées)
+- [x] T017 [P] [US2] Test d'intégration `tests/integration/test_telegram_service_fetch.py` (mocks Telethon) : `fetch_group` produit chaque `AccessStatus` (FULL / PARTIAL_HIDDEN / ADMIN_REQUIRED / ERROR)
 
 ### Implementation for User Story 2
 
-- [ ] T018 [P] [US2] Créer `pilottelega/core/link_parser.py` : `normalize_link`, `parse_links` — fonctions pures (FR-006/007/015) (contracts/analysis-service.md)
-- [ ] T019 [US2] Étendre `pilottelega/core/telegram_service.py` avec `fetch_group(identifier)` : itération des membres + mapping d'exceptions → `AccessStatus`, sans contournement (FR-008/010/011) (dépend de T012)
-- [ ] T020 [US2] Créer la fenêtre principale `pilottelega/ui/main_window.py` : zone multi-lignes + bouton « Récupérer » + `QTabWidget` + indicateur de progression (FR-006, SC-005)
-- [ ] T021 [P] [US2] Créer l'onglet de groupe `pilottelega/ui/group_tab.py` : table des membres (`@username` ou repli) + badge de statut d'accès (FR-009/010)
-- [ ] T022 [US2] Câbler le flux de récupération dans `main_window` : `parse_links` → `await fetch_group` par groupe → création d'un onglet ; signaler les lignes invalides sans bloquer ; UI réactive (dépend de T018, T019, T020, T021)
+- [x] T018 [P] [US2] Créer `pilottelega/core/link_parser.py` : `normalize_link`, `parse_links` — fonctions pures (FR-006/007/015) (contracts/analysis-service.md)
+- [x] T019 [US2] Étendre `pilottelega/core/telegram_service.py` avec `fetch_group(identifier)` : itération des membres + mapping d'exceptions → `AccessStatus`, sans contournement (FR-008/010/011) (dépend de T012)
+- [x] T020 [US2] Créer la fenêtre principale `pilottelega/ui/main_window.py` : zone multi-lignes + bouton « Récupérer » + `QTabWidget` + indicateur de progression (FR-006, SC-005)
+- [x] T021 [P] [US2] Créer l'onglet de groupe `pilottelega/ui/group_tab.py` : table des membres (`@username` ou repli) + badge de statut d'accès (FR-009/010)
+- [x] T022 [US2] Câbler le flux de récupération dans `main_window` : `parse_links` → `await fetch_group` par groupe → création d'un onglet ; signaler les lignes invalides sans bloquer ; UI réactive (dépend de T018, T019, T020, T021)
 
 **Checkpoint**: US1 + US2 fonctionnent indépendamment.
 
@@ -109,13 +109,13 @@ commun apparaît en multi-groupes avec la bonne liste, un membre exclusif en « 
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T023 [P] [US3] Test unitaire `tests/unit/test_analysis.py` : `compute_overlap` (membre commun à 2 groupes, membre exclusif, aucun commun, un seul groupe)
+- [x] T023 [P] [US3] Test unitaire `tests/unit/test_analysis.py` : `compute_overlap` (membre commun à 2 groupes, membre exclusif, aucun commun, un seul groupe)
 
 ### Implementation for User Story 3
 
-- [ ] T024 [P] [US3] Créer `pilottelega/core/analysis.py` : `compute_overlap(groups)` → `AnalysisResult` (membership en un passage, partition single/multi) (FR-012/013/014) (contracts/analysis-service.md)
-- [ ] T025 [US3] Créer l'onglet Analyse `pilottelega/ui/analysis_tab.py` : table « un seul groupe » + table « plusieurs groupes » avec la liste des `@groupes` (FR-013/014)
-- [ ] T026 [US3] Intégrer l'onglet Analyse dans `main_window` et le rafraîchir à chaque nouvelle récupération (dépend de T024, T025, T022)
+- [x] T024 [P] [US3] Créer `pilottelega/core/analysis.py` : `compute_overlap(groups)` → `AnalysisResult` (membership en un passage, partition single/multi) (FR-012/013/014) (contracts/analysis-service.md)
+- [x] T025 [US3] Créer l'onglet Analyse `pilottelega/ui/analysis_tab.py` : table « un seul groupe » + table « plusieurs groupes » avec la liste des `@groupes` (FR-013/014)
+- [x] T026 [US3] Intégrer l'onglet Analyse dans `main_window` et le rafraîchir à chaque nouvelle récupération (dépend de T024, T025, T022)
 
 **Checkpoint**: les 3 user stories sont fonctionnelles indépendamment — MVP complet.
 
@@ -125,11 +125,11 @@ commun apparaît en multi-groupes avec la bonne liste, un membre exclusif en « 
 
 **Purpose**: finitions, packaging, validation transverse.
 
-- [ ] T027 [P] Compléter les docstrings (fonctions/classes) et la section usage du `README.md`
-- [ ] T028 [P] Créer la config PyInstaller `pilottelega.spec` pour produire l'`.exe` autonome Windows (jalon 5) — aucun secret embarqué
-- [ ] T029 Exécuter la validation `quickstart.md` (scénarios S1/S2/S3) de bout en bout via `python -m pilottelega`
-- [ ] T030 Vérifier la CI verte en local : `ruff check .`, `black --check .`, `pytest` (Principe V)
-- [ ] T031 Vérification confidentialité (SC-006) : aucun `api_id`/`api_hash`/session embarqué dans le build ni transmis hors Telegram
+- [x] T027 [P] Compléter les docstrings (fonctions/classes) et la section usage du `README.md`
+- [x] T028 [P] Créer la config PyInstaller `pilottelega.spec` pour produire l'`.exe` autonome Windows (jalon 5) — aucun secret embarqué
+- [x] T029 Exécuter la validation `quickstart.md` (scénarios S1/S2/S3) de bout en bout via `python -m pilottelega`
+- [x] T030 Vérifier la CI verte en local : `ruff check .`, `black --check .`, `pytest` (Principe V)
+- [x] T031 Vérification confidentialité (SC-006) : aucun `api_id`/`api_hash`/session embarqué dans le build ni transmis hors Telegram
 
 ---
 
