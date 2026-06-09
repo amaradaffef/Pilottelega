@@ -1,0 +1,39 @@
+# Secrets / config locale
+.env
+.env.*
+*.session
+*.session-journal
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.spec.bak
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Tests / outils
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# PyInstaller
+*.spec
+build/
+dist/
