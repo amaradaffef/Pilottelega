@@ -27,14 +27,21 @@ class FakeEntity:
         self.username = username
 
 
+class FakeTotalList(list):
+    """Imite le ``TotalList`` de Telethon (liste avec attribut ``total``)."""
+
+    total = None
+
+
 class FakeClient:
     """Client contrôlable : ``users`` à itérer ou exception à lever."""
 
-    def __init__(self, *, users=None, entity=None, entity_error=None, iter_error=None):
+    def __init__(self, *, users=None, entity=None, entity_error=None, iter_error=None, total=None):
         self._users = users or []
         self._entity = entity or FakeEntity()
         self._entity_error = entity_error
         self._iter_error = iter_error
+        self._total = total
 
     async def connect(self):
         pass
@@ -43,6 +50,11 @@ class FakeClient:
         if self._entity_error:
             raise self._entity_error
         return self._entity
+
+    async def get_participants(self, entity, limit=0):
+        tl = FakeTotalList()
+        tl.total = self._total
+        return tl
 
     async def _aiter(self):
         if self._iter_error:
@@ -64,6 +76,22 @@ async def test_fetch_full_access():
     assert group.access_status is AccessStatus.FULL
     assert {m.user_id for m in group.members} == {1, 2}
     assert group.handle == "g"
+
+
+async def test_fetch_partial_when_total_exceeds_fetched():
+    # Telegram annonce 10 membres mais n'en laisse lire que 2 (cas admin/canal/gros groupe).
+    users = [FakeUser(1, "alice"), FakeUser(2, "bob")]
+    group = await _service(FakeClient(users=users, total=10)).fetch_group("@g")
+    assert group.access_status is AccessStatus.PARTIAL_HIDDEN
+    assert group.total_count == 10
+    assert len(group.members) == 2
+
+
+async def test_fetch_full_when_total_matches():
+    users = [FakeUser(1, "alice"), FakeUser(2, "bob")]
+    group = await _service(FakeClient(users=users, total=2)).fetch_group("@g")
+    assert group.access_status is AccessStatus.FULL
+    assert group.total_count == 2
 
 
 async def test_fetch_partial_hidden_when_empty():

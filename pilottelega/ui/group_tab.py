@@ -62,7 +62,12 @@ class GroupTab(QWidget):
 
     def _status_text(self) -> str:
         status = tr(f"status.{self.group.access_status.value}")
-        text = tr("group.status_summary", status=status, count=len(self.group.members))
+        fetched = len(self.group.members)
+        total = self.group.total_count
+        if total is not None and total != fetched:
+            text = tr("group.status_summary_total", status=status, fetched=fetched, total=total)
+        else:
+            text = tr("group.status_summary", status=status, count=fetched)
         if self.group.access_status is AccessStatus.ERROR and self.group.error_message:
             text += f" : {self.group.error_message}"
         return text

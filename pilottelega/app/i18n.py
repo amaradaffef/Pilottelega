@@ -59,6 +59,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "group.member_col": "Membre",
         "group.id_col": "ID",
         "group.status_summary": "{status} — {count} membre(s)",
+        "group.status_summary_total": "{status} — {fetched}/{total} membres lus (partiel)",
         # Statuts d'accès
         "status.full": "Accès complet",
         "status.partial_hidden": "Membres masqués",
@@ -115,6 +116,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "group.member_col": "Member",
         "group.id_col": "ID",
         "group.status_summary": "{status} — {count} member(s)",
+        "group.status_summary_total": "{status} — {fetched} / {total} members read (partial list)",
         "status.full": "Full access",
         "status.partial_hidden": "Hidden members",
         "status.admin_required": "Administrator rights required",
@@ -169,6 +171,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "group.member_col": "Участник",
         "group.id_col": "ID",
         "group.status_summary": "{status} — участников: {count}",
+        "group.status_summary_total": "{status} — прочитано {fetched} / {total} (неполный список)",
         "status.full": "Полный доступ",
         "status.partial_hidden": "Скрытые участники",
         "status.admin_required": "Требуются права администратора",

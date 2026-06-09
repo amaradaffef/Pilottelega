@@ -170,6 +170,19 @@ class TelegramService:
             phone=getattr(user, "phone", None),
         )
 
+    @staticmethod
+    async def _participants_total(client: Any, entity: Any) -> int | None:
+        """Nombre total de membres annoncé par Telegram (``None`` si indisponible).
+
+        Utilise ``get_participants(limit=0)`` qui renvoie le total sans charger la liste.
+        Permet de détecter une liste incomplète (gros groupes / canaux de diffusion).
+        """
+        try:
+            probe = await client.get_participants(entity, limit=0)
+        except Exception:  # noqa: BLE001 - total best-effort, ne bloque pas le fetch
+            return None
+        return getattr(probe, "total", None)
+
     async def _with_description(self, client: Any, member: Member) -> Member:
         """Retourne une copie du membre enrichie de sa bio (best-effort, jamais bloquant)."""
         try:
@@ -193,11 +206,23 @@ class TelegramService:
             entity = await client.get_entity(identifier)
             group.title = getattr(entity, "title", None)
             group.handle = getattr(entity, "username", None)
+
+            # Nombre total annoncé par Telegram (pour détecter une liste incomplète).
+            total = await self._participants_total(client, entity)
+
             members = [self._to_member(user) async for user in client.iter_participants(entity)]
             if fetch_descriptions:
                 members = [await self._with_description(client, m) for m in members]
             group.members = members
-            group.access_status = AccessStatus.FULL if members else AccessStatus.PARTIAL_HIDDEN
+            group.total_count = total if total is not None else len(members)
+
+            if not members:
+                group.access_status = AccessStatus.PARTIAL_HIDDEN
+            elif total is not None and len(members) < total:
+                # On a lu moins que le total réel → liste partielle (Telegram restreint).
+                group.access_status = AccessStatus.PARTIAL_HIDDEN
+            else:
+                group.access_status = AccessStatus.FULL
         except Exception as exc:  # noqa: BLE001 - statut encodé, pas de propagation (FR-011)
             group.access_status = classify_access_error(exc)
             group.error_message = str(exc) or type(exc).__name__

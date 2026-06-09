@@ -79,6 +79,7 @@ class TargetGroup:
     access_status: AccessStatus = AccessStatus.ERROR
     members: list[Member] = field(default_factory=list)
     error_message: str | None = None
+    total_count: int | None = None  # total annoncé par Telegram (peut dépasser les membres lus)
 
     @property
     def label(self) -> str:
