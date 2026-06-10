@@ -106,10 +106,19 @@ class RemovalTab(QWidget):
         actions.addStretch()
         layout.addLayout(actions)
 
-        # Aperçu
-        self.table = QTableWidget(0, 2)
+        # Tout cocher / décocher (agit sur les lignes de l'aperçu)
+        self.select_all_check = QCheckBox()
+        self.select_all_check.setChecked(True)
+        self.select_all_check.stateChanged.connect(self._toggle_all)
+        layout.addWidget(self.select_all_check)
+
+        # Aperçu (colonne 0 = case à cocher pour inclure/exclure la ligne)
+        self.table = QTableWidget(0, 3)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.table)
 
         self.progress = QProgressBar()
@@ -195,22 +204,52 @@ class RemovalTab(QWidget):
 
         self.table.setRowCount(len(self._plan))
         for row, removal in enumerate(self._plan):
-            self.table.setItem(row, 0, QTableWidgetItem(removal.user_label))
-            self.table.setItem(row, 1, QTableWidgetItem(removal.group_label))
+            check = QTableWidgetItem()
+            check.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+            check.setCheckState(Qt.CheckState.Checked)
+            self.table.setItem(row, 0, check)
+            self.table.setItem(row, 1, QTableWidgetItem(removal.user_label))
+            self.table.setItem(row, 2, QTableWidgetItem(removal.group_label))
 
+        self.select_all_check.blockSignals(True)
+        self.select_all_check.setChecked(True)
+        self.select_all_check.blockSignals(False)
         self.execute_btn.setEnabled(bool(self._plan))
         self.status.setText("" if self._plan else tr("removal.empty"))
 
+    def _toggle_all(self) -> None:
+        """Coche ou décoche toutes les lignes de l'aperçu."""
+        state = (
+            Qt.CheckState.Checked if self.select_all_check.isChecked() else Qt.CheckState.Unchecked
+        )
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, 0)
+            if item is not None:
+                item.setCheckState(state)
+
+    def _selected_removals(self) -> list[Removal]:
+        """Retraits dont la case est cochée (dans l'ordre du plan)."""
+        return [
+            self._plan[row]
+            for row in range(self.table.rowCount())
+            if self.table.item(row, 0) is not None
+            and self.table.item(row, 0).checkState() == Qt.CheckState.Checked
+        ]
+
     @asyncSlot()
     async def on_execute(self) -> None:
-        """Confirme puis exécute les retraits, et affiche un rapport."""
+        """Confirme puis exécute les retraits cochés, et affiche un rapport."""
         if not self._plan:
             self.status.setText(tr("removal.need_preview"))
+            return
+        selected = self._selected_removals()
+        if not selected:
+            self.status.setText(tr("removal.empty"))
             return
         confirm = QMessageBox.question(
             self,
             tr("removal.confirm_title"),
-            tr("removal.confirm_body", count=len(self._plan)),
+            tr("removal.confirm_body", count=len(selected)),
         )
         if confirm != QMessageBox.StandardButton.Yes:
             return
@@ -219,14 +258,14 @@ class RemovalTab(QWidget):
         self.preview_btn.setEnabled(False)
         self.execute_btn.setEnabled(False)
         self.progress.setVisible(True)
-        self.progress.setRange(0, len(self._plan))
+        self.progress.setRange(0, len(selected))
         self.progress.setValue(0)
 
         def on_progress(done: int, total: int) -> None:
             self.progress.setValue(done)
             self.status.setText(tr("removal.running", done=done, total=total))
 
-        results = await self.service.execute_removals(self._plan, ban=ban, progress=on_progress)
+        results = await self.service.execute_removals(selected, ban=ban, progress=on_progress)
         ok = sum(1 for r in results if r.ok)
         failed = len(results) - ok
         self.status.setText(tr("removal.done", ok=ok, failed=failed))
@@ -248,5 +287,8 @@ class RemovalTab(QWidget):
         self.remove_hint.setText(tr("removal.remove_hint"))
         self.ban_check.setText(tr("removal.ban"))
         self.preview_btn.setText(tr("removal.preview"))
+        self.select_all_check.setText(tr("removal.select_all"))
         self.execute_btn.setText(tr("removal.execute"))
-        self.table.setHorizontalHeaderLabels([tr("removal.col_member"), tr("removal.col_group")])
+        self.table.setHorizontalHeaderLabels(
+            ["", tr("removal.col_member"), tr("removal.col_group")]
+        )
