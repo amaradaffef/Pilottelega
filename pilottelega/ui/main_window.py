@@ -30,6 +30,7 @@ from pilottelega.core.models import TargetGroup
 from pilottelega.core.telegram_service import TelegramService
 from pilottelega.ui.analysis_tab import AnalysisTab
 from pilottelega.ui.group_tab import GroupTab
+from pilottelega.ui.removal_tab import RemovalTab
 
 logger = get_logger(__name__)
 
@@ -86,6 +87,8 @@ class MainWindow(QMainWindow):
 
         self.analysis_tab = AnalysisTab()
         self.tabs.addTab(self.analysis_tab, tr("main.analysis_tab"))
+        self.removal_tab = RemovalTab(service)
+        self.tabs.addTab(self.removal_tab, tr("main.removal_tab"))
 
         self.setCentralWidget(central)
         self.retranslate()
@@ -98,6 +101,7 @@ class MainWindow(QMainWindow):
         self.descr_check.setText(tr("main.fetch_descriptions"))
         self.fetch_btn.setText(tr("main.fetch"))
         self.tabs.setTabText(self.tabs.indexOf(self.analysis_tab), tr("main.analysis_tab"))
+        self.tabs.setTabText(self.tabs.indexOf(self.removal_tab), tr("main.removal_tab"))
         for index in range(self.tabs.count()):
             widget = self.tabs.widget(index)
             if hasattr(widget, "retranslate"):
@@ -133,6 +137,7 @@ class MainWindow(QMainWindow):
             self.progress.setValue(index)
 
         self.analysis_tab.update_groups(self.groups)
+        self.removal_tab.update_groups(self.groups)
 
         message = tr("main.fetched_summary", count=len(valid))
         if invalid:
@@ -145,4 +150,5 @@ class MainWindow(QMainWindow):
         """Ajoute (ou remplace) l'onglet d'un groupe et mémorise ses données."""
         self.groups = [g for g in self.groups if g.identifier != group.identifier]
         self.groups.append(group)
-        self.tabs.insertTab(self.tabs.count() - 1, GroupTab(group), group.label)
+        # Insère l'onglet du groupe avant les onglets fixes Analyse/Retirer.
+        self.tabs.insertTab(self.tabs.indexOf(self.analysis_tab), GroupTab(group), group.label)

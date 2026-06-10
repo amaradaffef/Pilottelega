@@ -17,6 +17,7 @@ from typing import Any
 
 from pilottelega.app.logging_conf import get_logger
 from pilottelega.core.models import AccessStatus, Member, TargetGroup
+from pilottelega.core.removal import Removal, RemovalResult
 
 logger = get_logger(__name__)
 
@@ -233,3 +234,50 @@ class TelegramService:
                 type(exc).__name__,
             )
         return group
+
+    # ----- Retrait de membres (administration) --------------------------------------
+
+    async def _remove_one(self, entity: Any, user_id: int, ban: bool) -> None:
+        """Retire (kick) ou bannit un utilisateur d'un groupe. Lève en cas d'échec."""
+        client = self._client
+        if ban:
+            # view_messages=False => banni (ne peut plus voir/rejoindre).
+            await client.edit_permissions(entity, user_id, view_messages=False)
+        else:
+            # kick = retire mais autorise un retour ultérieur via lien.
+            await client.kick_participant(entity, user_id)
+
+    async def execute_removals(
+        self,
+        removals: list[Removal],
+        ban: bool = False,
+        progress: Callable[[int, int], None] | None = None,
+    ) -> list[RemovalResult]:
+        """Exécute une liste de retraits, en rapportant le résultat de **chacun**.
+
+        Un échec sur un retrait (droits manquants, FloodWait, etc.) n'interrompt pas les
+        autres : il est consigné dans le ``RemovalResult`` correspondant.
+        """
+        client = await self._ensure_client()
+        entity_cache: dict[str, Any] = {}
+        results: list[RemovalResult] = []
+        total = len(removals)
+        for index, removal in enumerate(removals, start=1):
+            try:
+                entity = entity_cache.get(removal.group_identifier)
+                if entity is None:
+                    entity = await client.get_entity(removal.group_identifier)
+                    entity_cache[removal.group_identifier] = entity
+                await self._remove_one(entity, removal.user_id, ban)
+                results.append(RemovalResult(removal, ok=True))
+            except Exception as exc:  # noqa: BLE001 - un échec ne bloque pas les autres
+                logger.warning(
+                    "Retrait échoué (user=%s, group=%s): %s",
+                    removal.user_id,
+                    removal.group_identifier,
+                    type(exc).__name__,
+                )
+                results.append(RemovalResult(removal, ok=False, error=type(exc).__name__))
+            if progress is not None:
+                progress(index, total)
+        return results
