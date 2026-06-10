@@ -73,17 +73,22 @@ def export_analysis_to_xlsx(
     présents dans plusieurs groupes (colonne ``groups`` = liste des ``@groupes``).
     """
     wb = Workbook()
-    header = [*GROUP_COLUMNS, "groups"]
 
+    # Feuille « un seul groupe » : colonnes membres + une colonne du groupe.
     ws_single = wb.active
     ws_single.title = _sheet_name(t("export.sheet_single"))
-    ws_single.append(header)
+    ws_single.append([*GROUP_COLUMNS, "group1"])
     for member, group_label in result.single_group:
         ws_single.append([*member_row(member), group_label])
 
+    # Feuille « multi-groupes » : colonnes membres + une colonne PAR groupe (group1, group2, …).
     ws_multi = wb.create_sheet(_sheet_name(t("export.sheet_multi")))
-    ws_multi.append(header)
+    max_groups = max((len(labels) for _, labels in result.multi_group), default=0)
+    max_groups = max(max_groups, 1)  # au moins une colonne group1
+    group_headers = [f"group{i}" for i in range(1, max_groups + 1)]
+    ws_multi.append([*GROUP_COLUMNS, *group_headers])
     for member, group_labels in result.multi_group:
-        ws_multi.append([*member_row(member), ", ".join(group_labels)])
+        padded = [*group_labels, *([""] * (max_groups - len(group_labels)))]
+        ws_multi.append([*member_row(member), *padded])
 
     wb.save(path)

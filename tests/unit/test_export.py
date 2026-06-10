@@ -89,21 +89,22 @@ def test_export_analysis_has_all_columns(tmp_path):
     wb = load_workbook(path)
     assert len(wb.worksheets) == 2
 
-    expected_header = (*GROUP_COLUMNS, "groups")
     single_ws, multi_ws = wb.worksheets[0], wb.worksheets[1]
-    # Toutes les colonnes membres + la colonne groups, sur les deux feuilles.
-    assert tuple(c.value for c in single_ws[1]) == expected_header
-    assert tuple(c.value for c in multi_ws[1]) == expected_header
-
-    # Feuille « un seul groupe » : alice et carol (user_id en colonne 0).
+    # Feuille « un seul groupe » : colonnes membres + group1.
+    assert tuple(c.value for c in single_ws[1]) == (*GROUP_COLUMNS, "group1")
     single_rows = list(single_ws.iter_rows(min_row=2, values_only=True))
     assert {row[0] for row in single_rows} == {1, 3}
     alice_row = next(row for row in single_rows if row[0] == 1)
     assert alice_row[1] == "alice"  # username
     assert alice_row[GROUP_COLUMNS.index("phone")] == "+33100"
-    assert alice_row[-1] == "@alpha"  # colonne groups
+    assert alice_row[-1] == "@alpha"  # group1
 
-    # Feuille « multi-groupes » : bob, colonne groups = les deux groupes.
+    # Feuille « multi-groupes » : une colonne PAR groupe (group1, group2).
+    assert tuple(c.value for c in multi_ws[1]) == (*GROUP_COLUMNS, "group1", "group2")
     multi_rows = list(multi_ws.iter_rows(min_row=2, values_only=True))
     assert {row[0] for row in multi_rows} == {2}
-    assert "@alpha" in multi_rows[0][-1] and "@bravo" in multi_rows[0][-1]
+    bob_row = multi_rows[0]
+    assert bob_row[1] == "bob"  # username toujours présent
+    # bob est dans alpha et bravo, répartis sur group1 et group2 (triés).
+    assert bob_row[-2] == "@alpha"
+    assert bob_row[-1] == "@bravo"
