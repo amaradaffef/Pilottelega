@@ -68,20 +68,22 @@ def export_analysis_to_xlsx(
 ) -> None:
     """Écrit l'analyse de recoupement dans un ``.xlsx`` à deux onglets.
 
-    Onglet 1 : membres présents dans un seul groupe. Onglet 2 : membres multi-groupes
-    avec la liste des groupes.
+    Chaque onglet contient **toutes les colonnes membres** (:data:`GROUP_COLUMNS`) plus une
+    colonne ``groups``. Onglet 1 : membres présents dans un seul groupe. Onglet 2 : membres
+    présents dans plusieurs groupes (colonne ``groups`` = liste des ``@groupes``).
     """
     wb = Workbook()
+    header = [*GROUP_COLUMNS, "groups"]
 
     ws_single = wb.active
     ws_single.title = _sheet_name(t("export.sheet_single"))
-    ws_single.append([t("analysis.member_col"), t("analysis.group_col")])
+    ws_single.append(header)
     for member, group_label in result.single_group:
-        ws_single.append([member.label, group_label])
+        ws_single.append([*member_row(member), group_label])
 
     ws_multi = wb.create_sheet(_sheet_name(t("export.sheet_multi")))
-    ws_multi.append([t("analysis.member_col"), t("analysis.groups_col")])
+    ws_multi.append(header)
     for member, group_labels in result.multi_group:
-        ws_multi.append([member.label, ", ".join(group_labels)])
+        ws_multi.append([*member_row(member), ", ".join(group_labels)])
 
     wb.save(path)

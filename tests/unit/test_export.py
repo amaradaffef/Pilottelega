@@ -75,8 +75,10 @@ def test_export_group_writes_all_fields(tmp_path):
     assert rows[2] == (2, None, "Botty", None, True, False, False, None, None, None)
 
 
-def test_export_analysis_two_sheets(tmp_path):
-    alice, bob, carol = Member(1, "alice"), Member(2, "bob"), Member(3, "carol")
+def test_export_analysis_has_all_columns(tmp_path):
+    alice = Member(1, "alice", first_name="Alice", phone="+33100")
+    bob = Member(2, "bob", first_name="Bob")
+    carol = Member(3, "carol", first_name="Carol")
     g1 = _group("alpha", [alice, bob])
     g2 = _group("bravo", [bob, carol])
     result = compute_overlap([g1, g2])
@@ -87,12 +89,21 @@ def test_export_analysis_two_sheets(tmp_path):
     wb = load_workbook(path)
     assert len(wb.worksheets) == 2
 
-    single_rows = list(wb.worksheets[0].iter_rows(min_row=2, values_only=True))
-    single_ids = {label for _, label in single_rows}
-    assert single_ids  # alice et carol sont uniques
+    expected_header = (*GROUP_COLUMNS, "groups")
+    single_ws, multi_ws = wb.worksheets[0], wb.worksheets[1]
+    # Toutes les colonnes membres + la colonne groups, sur les deux feuilles.
+    assert tuple(c.value for c in single_ws[1]) == expected_header
+    assert tuple(c.value for c in multi_ws[1]) == expected_header
 
-    multi_rows = list(wb.worksheets[1].iter_rows(min_row=2, values_only=True))
-    # bob est présent dans les deux groupes
-    assert any(
-        "@alpha" in (cells[1] or "") and "@bravo" in (cells[1] or "") for cells in multi_rows
-    )
+    # Feuille « un seul groupe » : alice et carol (user_id en colonne 0).
+    single_rows = list(single_ws.iter_rows(min_row=2, values_only=True))
+    assert {row[0] for row in single_rows} == {1, 3}
+    alice_row = next(row for row in single_rows if row[0] == 1)
+    assert alice_row[1] == "alice"  # username
+    assert alice_row[GROUP_COLUMNS.index("phone")] == "+33100"
+    assert alice_row[-1] == "@alpha"  # colonne groups
+
+    # Feuille « multi-groupes » : bob, colonne groups = les deux groupes.
+    multi_rows = list(multi_ws.iter_rows(min_row=2, values_only=True))
+    assert {row[0] for row in multi_rows} == {2}
+    assert "@alpha" in multi_rows[0][-1] and "@bravo" in multi_rows[0][-1]
