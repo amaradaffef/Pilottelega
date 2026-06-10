@@ -101,6 +101,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "export.sheet_group": "Membres",
         "export.sheet_single": "Un seul groupe",
         "export.sheet_multi": "Multi-groupes",
+        "export.sheet_all": "Tous les utilisateurs",
         "export.username_col": "Nom d'utilisateur",
     },
     "en": {
@@ -177,6 +178,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "export.sheet_group": "Members",
         "export.sheet_single": "Single group",
         "export.sheet_multi": "Multi-group",
+        "export.sheet_all": "All users",
         "export.username_col": "Username",
     },
     "ru": {
@@ -256,6 +258,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "export.sheet_group": "Участники",
         "export.sheet_single": "Одна группа",
         "export.sheet_multi": "Несколько групп",
+        "export.sheet_all": "Все пользователи",
         "export.username_col": "Имя пользователя",
     },
 }

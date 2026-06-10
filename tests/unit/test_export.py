@@ -87,7 +87,7 @@ def test_export_analysis_has_all_columns(tmp_path):
     export_analysis_to_xlsx(result, str(path))
 
     wb = load_workbook(path)
-    assert len(wb.worksheets) == 2
+    assert len(wb.worksheets) == 3
 
     single_ws, multi_ws = wb.worksheets[0], wb.worksheets[1]
     # Feuille « un seul groupe » : colonnes membres + group1.
@@ -108,3 +108,11 @@ def test_export_analysis_has_all_columns(tmp_path):
     # bob est dans alpha et bravo, répartis sur group1 et group2 (triés).
     assert bob_row[-2] == "@alpha"
     assert bob_row[-1] == "@bravo"
+
+    # Feuille « tous les utilisateurs » : dédupliquée, toutes colonnes, SANS colonne groupe.
+    all_ws = wb.worksheets[2]
+    assert tuple(c.value for c in all_ws[1]) == tuple(GROUP_COLUMNS)  # pas de colonne group*
+    all_rows = list(all_ws.iter_rows(min_row=2, values_only=True))
+    ids = [row[0] for row in all_rows]
+    assert sorted(ids) == [1, 2, 3]  # alice, bob, carol — chacun une seule fois
+    assert len(ids) == len(set(ids))  # aucune duplication

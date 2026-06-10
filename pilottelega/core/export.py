@@ -91,4 +91,14 @@ def export_analysis_to_xlsx(
         padded = [*group_labels, *([""] * (max_groups - len(group_labels)))]
         ws_multi.append([*member_row(member), *padded])
 
+    # Feuille « tous les utilisateurs » : liste dédupliquée, toutes colonnes, SANS groupe.
+    ws_all = wb.create_sheet(_sheet_name(t("export.sheet_all")))
+    ws_all.append(list(GROUP_COLUMNS))
+    seen: set[int] = set()
+    for member, _info in (*result.single_group, *result.multi_group):
+        if member.user_id in seen:
+            continue
+        seen.add(member.user_id)
+        ws_all.append(member_row(member))
+
     wb.save(path)
