@@ -56,6 +56,17 @@ def format_last_seen(user: Any) -> str | None:
     return mapping.get(type(status).__name__, type(status).__name__)
 
 
+# Requêtes de recherche pour la récupération « complète » : en combinant une recherche
+# vide + chaque lettre (latin/cyrillique) + chiffres, on remonte bien plus de membres que
+# la pagination par défaut (que Telegram plafonne sur les gros groupes).
+_SEARCH_QUERIES: list[str] = [
+    "",
+    *"abcdefghijklmnopqrstuvwxyz",
+    *"абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
+    *"0123456789",
+]
+
+
 def classify_access_error(exc: Exception) -> AccessStatus:
     """Mappe une exception Telethon vers un ``AccessStatus`` (sans importer Telethon).
 
@@ -171,6 +182,23 @@ class TelegramService:
             phone=getattr(user, "phone", None),
         )
 
+    async def _iter_participants(self, client: Any, entity: Any, thorough: bool):
+        """Itère les participants ; en mode ``thorough``, combine des recherches par lettre.
+
+        Le mode complet contourne en partie le plafond d'énumération de Telegram sur les
+        gros groupes (la déduplication est faite par l'appelant).
+        """
+        if not thorough:
+            async for user in client.iter_participants(entity):
+                yield user
+            return
+        for query in _SEARCH_QUERIES:
+            try:
+                async for user in client.iter_participants(entity, search=query):
+                    yield user
+            except Exception as exc:  # noqa: BLE001 - une recherche peut échouer (FloodWait…)
+                logger.warning("Recherche '%s' échouée: %s", query, type(exc).__name__)
+
     @staticmethod
     async def _participants_total(client: Any, entity: Any) -> int | None:
         """Nombre total de membres annoncé par Telegram (``None`` si indisponible).
@@ -193,13 +221,15 @@ class TelegramService:
             return member
         return replace(member, description=about)
 
-    async def fetch_group(self, identifier: str, fetch_descriptions: bool = False) -> TargetGroup:
+    async def fetch_group(
+        self, identifier: str, fetch_descriptions: bool = False, thorough: bool = False
+    ) -> TargetGroup:
         """Récupère les membres d'un groupe et en déduit le ``AccessStatus``.
 
-        Si ``fetch_descriptions`` est vrai, complète la bio de chaque membre via une requête
-        « full user » (lent, une requête par membre). N'élève jamais d'exception sur un accès
-        refusé : encode le statut (FR-008/010/011). L'échec d'un groupe n'affecte pas les
-        autres (FR-007).
+        ``thorough`` active une récupération complète (recherche par lettres) pour remonter
+        davantage de membres sur les gros groupes. ``fetch_descriptions`` complète la bio de
+        chaque membre (lent). N'élève jamais d'exception sur un accès refusé : encode le statut
+        (FR-008/010/011). L'échec d'un groupe n'affecte pas les autres (FR-007).
         """
         client = await self._ensure_client()
         group = TargetGroup(raw_input=identifier, identifier=identifier)
@@ -211,7 +241,13 @@ class TelegramService:
             # Nombre total annoncé par Telegram (pour détecter une liste incomplète).
             total = await self._participants_total(client, entity)
 
-            members = [self._to_member(user) async for user in client.iter_participants(entity)]
+            members: list[Member] = []
+            seen_ids: set[int] = set()
+            async for user in self._iter_participants(client, entity, thorough):
+                if user.id in seen_ids:
+                    continue
+                seen_ids.add(user.id)
+                members.append(self._to_member(user))
             if fetch_descriptions:
                 members = [await self._with_description(client, m) for m in members]
             group.members = members

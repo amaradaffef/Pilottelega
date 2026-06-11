@@ -36,12 +36,15 @@ class FakeTotalList(list):
 class FakeClient:
     """Client contrôlable : ``users`` à itérer ou exception à lever."""
 
-    def __init__(self, *, users=None, entity=None, entity_error=None, iter_error=None, total=None):
+    def __init__(
+        self, *, users=None, entity=None, entity_error=None, iter_error=None, total=None, cap=None
+    ):
         self._users = users or []
         self._entity = entity or FakeEntity()
         self._entity_error = entity_error
         self._iter_error = iter_error
         self._total = total
+        self._cap = cap  # simule le plafond de la pagination par défaut
 
     async def connect(self):
         pass
@@ -56,14 +59,23 @@ class FakeClient:
         tl.total = self._total
         return tl
 
-    async def _aiter(self):
+    async def _aiter(self, search):
         if self._iter_error:
             raise self._iter_error
-        for u in self._users:
-            yield u
+        # En mode recherche (thorough), on renvoie les membres dont le nom commence par la
+        # lettre demandée ; sinon (search None/"") on renvoie tout (pagination par défaut).
+        if search:
+            for u in self._users:
+                name = (u.first_name or "").lower()
+                if name.startswith(search):
+                    yield u
+        else:
+            pool = self._users if self._cap is None else self._users[: self._cap]
+            for u in pool:
+                yield u
 
-    def iter_participants(self, entity):
-        return self._aiter()
+    def iter_participants(self, entity, search=None):
+        return self._aiter(search)
 
 
 def _service(client):
@@ -92,6 +104,20 @@ async def test_fetch_full_when_total_matches():
     group = await _service(FakeClient(users=users, total=2)).fetch_group("@g")
     assert group.access_status is AccessStatus.FULL
     assert group.total_count == 2
+
+
+async def test_thorough_fetch_finds_more_than_default():
+    users = [
+        FakeUser(1, "alice", "Alice"),
+        FakeUser(2, "bob", "Bob"),
+        FakeUser(3, "carol", "Carol"),
+    ]
+    # La pagination par défaut est plafonnée à 1 membre ; la recherche par lettre les remonte tous.
+    normal = await _service(FakeClient(users=users, cap=1)).fetch_group("@g")
+    assert len(normal.members) == 1
+
+    thorough = await _service(FakeClient(users=users, cap=1)).fetch_group("@g", thorough=True)
+    assert {m.user_id for m in thorough.members} == {1, 2, 3}  # dédupliqués
 
 
 async def test_fetch_partial_hidden_when_empty():
