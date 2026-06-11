@@ -34,7 +34,7 @@ def member_row(member: Member) -> list[object]:
     """Ligne de valeurs d'un membre, dans l'ordre de :data:`GROUP_COLUMNS`."""
     return [
         member.user_id,
-        member.username or "",
+        f"@{member.username}" if member.username else "",
         member.first_name or "",
         member.last_name or "",
         member.is_bot,

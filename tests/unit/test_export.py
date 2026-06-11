@@ -61,7 +61,7 @@ def test_export_group_writes_all_fields(tmp_path):
     # Alice : premium, dernière connexion datée, téléphone et bio.
     assert rows[1] == (
         1,
-        "alice",
+        "@alice",
         "Alice",
         "A",
         False,
@@ -95,7 +95,7 @@ def test_export_analysis_has_all_columns(tmp_path):
     single_rows = list(single_ws.iter_rows(min_row=2, values_only=True))
     assert {row[0] for row in single_rows} == {1, 3}
     alice_row = next(row for row in single_rows if row[0] == 1)
-    assert alice_row[1] == "alice"  # username
+    assert alice_row[1] == "@alice"  # username préfixé @
     assert alice_row[GROUP_COLUMNS.index("phone")] == "+33100"
     assert alice_row[-1] == "@alpha"  # group1
 
@@ -104,7 +104,7 @@ def test_export_analysis_has_all_columns(tmp_path):
     multi_rows = list(multi_ws.iter_rows(min_row=2, values_only=True))
     assert {row[0] for row in multi_rows} == {2}
     bob_row = multi_rows[0]
-    assert bob_row[1] == "bob"  # username toujours présent
+    assert bob_row[1] == "@bob"  # username préfixé @
     # bob est dans alpha et bravo, répartis sur group1 et group2 (triés).
     assert bob_row[-2] == "@alpha"
     assert bob_row[-1] == "@bravo"
