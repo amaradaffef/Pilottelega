@@ -7,6 +7,7 @@ Interface traduisible (FR/EN/RU) avec sélecteur de langue.
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QPlainTextEdit,
     QProgressBar,
@@ -76,25 +78,34 @@ class MainWindow(QMainWindow):
         self.thorough_check = QCheckBox()
         layout.addWidget(self.thorough_check)
 
-        # « Personnes à ne jamais retirer » : liste gérée de @pseudos / IDs Telegram.
+        # « Personnes à ne jamais retirer » : on coche des membres récupérés puis « Ajouter ».
         self._protected_persons: list[str] = preferences.load_protected_persons()
         self.protected_label = QLabel()
         layout.addWidget(self.protected_label)
-        person_row = QHBoxLayout()
-        self.protected_input = QLineEdit()
-        self.protected_input.returnPressed.connect(self._on_add_protected_person)
-        person_row.addWidget(self.protected_input)
+        protected_row = QHBoxLayout()
+        # Gauche : filtre + liste cochable des membres + bouton « Ajouter les cochés ».
+        picker_col = QVBoxLayout()
+        self.member_search = QLineEdit()
+        self.member_search.textChanged.connect(self._populate_member_picker)
+        picker_col.addWidget(self.member_search)
+        self.member_picker = QListWidget()
+        self.member_picker.setMaximumHeight(130)
+        picker_col.addWidget(self.member_picker)
         self.protected_add_btn = QPushButton()
-        self.protected_add_btn.clicked.connect(self._on_add_protected_person)
-        person_row.addWidget(self.protected_add_btn)
+        self.protected_add_btn.clicked.connect(self._on_add_checked_members)
+        picker_col.addWidget(self.protected_add_btn)
+        protected_row.addLayout(picker_col)
+        # Droite : liste des personnes exclues + bouton « Retirer la sélection ».
+        excluded_col = QVBoxLayout()
+        self.protected_list = QListWidget()
+        self.protected_list.setMaximumHeight(130)
+        self.protected_list.addItems(self._protected_persons)
+        excluded_col.addWidget(self.protected_list)
         self.protected_remove_btn = QPushButton()
         self.protected_remove_btn.clicked.connect(self._on_remove_protected_person)
-        person_row.addWidget(self.protected_remove_btn)
-        layout.addLayout(person_row)
-        self.protected_list = QListWidget()
-        self.protected_list.setMaximumHeight(100)
-        self.protected_list.addItems(self._protected_persons)
-        layout.addWidget(self.protected_list)
+        excluded_col.addWidget(self.protected_remove_btn)
+        protected_row.addLayout(excluded_col)
+        layout.addLayout(protected_row)
 
         # Exclusion des bots (gouverne aussi l'analyse et les listes).
         self.exclude_bots_check = QCheckBox()
@@ -136,7 +147,7 @@ class MainWindow(QMainWindow):
         self.descr_check.setText(tr("main.fetch_descriptions"))
         self.thorough_check.setText(tr("main.thorough"))
         self.protected_label.setText(tr("main.protected_label"))
-        self.protected_input.setPlaceholderText(tr("main.protected_placeholder"))
+        self.member_search.setPlaceholderText(tr("main.protected_search"))
         self.protected_add_btn.setText(tr("main.protected_add"))
         self.protected_remove_btn.setText(tr("main.protected_remove"))
         self.exclude_bots_check.setText(tr("main.exclude_bots"))
@@ -162,15 +173,59 @@ class MainWindow(QMainWindow):
             exclude_bots=self.exclude_bots_check.isChecked(),
         )
 
-    def _on_add_protected_person(self) -> None:
-        """Ajoute la saisie (@pseudo ou ID) à la liste des personnes protégées."""
-        text = self.protected_input.text().strip()
-        self.protected_input.clear()
-        if not text or text.lower() in {p.lower() for p in self._protected_persons}:
-            return
-        self._protected_persons.append(text)
-        self.protected_list.addItem(text)
-        self._save_protected_persons()
+    @staticmethod
+    def _member_token(member: object) -> str:
+        """Jeton stable et parsable pour un membre : ``@username`` sinon son identifiant."""
+        username = getattr(member, "username", None)
+        return f"@{username}" if username else str(getattr(member, "user_id", ""))
+
+    def _populate_member_picker(self) -> None:
+        """Remplit la liste cochable des membres récupérés (filtrée, sans déjà-exclus/bots)."""
+        query = self.member_search.text().strip().lower()
+        exclude_bots = self.exclude_bots_check.isChecked()
+        protected = {p.lower() for p in self._protected_persons}
+        seen: set[int] = set()
+        self.member_picker.blockSignals(True)
+        self.member_picker.clear()
+        for group in self.groups:
+            for member in group.members:
+                if member.user_id in seen:
+                    continue
+                seen.add(member.user_id)
+                if exclude_bots and member.is_bot:
+                    continue
+                token = self._member_token(member)
+                if token.lower() in protected:
+                    continue
+                haystack = f"{member.label} {member.username or ''} {member.user_id}".lower()
+                if query and query not in haystack:
+                    continue
+                item = QListWidgetItem(member.label)
+                item.setData(Qt.ItemDataRole.UserRole, token)
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Unchecked)
+                self.member_picker.addItem(item)
+        self.member_picker.blockSignals(False)
+
+    def _on_add_checked_members(self) -> None:
+        """Ajoute les membres cochés à la liste des personnes à ne jamais retirer."""
+        existing = {p.lower() for p in self._protected_persons}
+        added = False
+        for i in range(self.member_picker.count()):
+            item = self.member_picker.item(i)
+            if item.checkState() != Qt.CheckState.Checked:
+                continue
+            token = str(item.data(Qt.ItemDataRole.UserRole))
+            if token.lower() in existing:
+                continue
+            self._protected_persons.append(token)
+            self.protected_list.addItem(token)
+            existing.add(token.lower())
+            added = True
+        if added:
+            self._save_protected_persons()
+        else:
+            self._populate_member_picker()  # décoche au moins l'affichage
 
     def _on_remove_protected_person(self) -> None:
         """Retire de la liste la personne protégée sélectionnée."""
@@ -185,11 +240,14 @@ class MainWindow(QMainWindow):
         """Mémorise la liste des personnes protégées et recalcule les vues."""
         preferences.save_protected_persons(self._protected_persons)
         if self.groups:
-            self._refresh_views()
+            self._refresh_views()  # repeuple aussi le sélecteur de membres
+        else:
+            self._populate_member_picker()
 
     def _refresh_views(self) -> None:
         """Réapplique le filtre courant aux onglets de groupe, à l'analyse et au retrait."""
         filter_ = self._current_filter()
+        self._populate_member_picker()
         for index in range(self.tabs.count()):
             widget = self.tabs.widget(index)
             if isinstance(widget, GroupTab):
