@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
         self.member_search.textChanged.connect(self._populate_member_picker)
         picker_col.addWidget(self.member_search)
         self.member_picker = QListWidget()
-        self.member_picker.setMaximumHeight(130)
+        self.member_picker.setMaximumHeight(260)
         picker_col.addWidget(self.member_picker)
         self.protected_add_btn = QPushButton()
         self.protected_add_btn.clicked.connect(self._on_add_checked_members)
@@ -98,7 +98,7 @@ class MainWindow(QMainWindow):
         # Droite : liste des personnes exclues + bouton « Retirer la sélection ».
         excluded_col = QVBoxLayout()
         self.protected_list = QListWidget()
-        self.protected_list.setMaximumHeight(130)
+        self.protected_list.setMaximumHeight(260)
         self.protected_list.addItems(self._protected_persons)
         excluded_col.addWidget(self.protected_list)
         self.protected_remove_btn = QPushButton()
