@@ -7,12 +7,13 @@ from collections.abc import Iterable
 from pilottelega.core.models import AnalysisResult, Member, TargetGroup
 
 
-def compute_overlap(groups: Iterable[TargetGroup]) -> AnalysisResult:
+def compute_overlap(groups: Iterable[TargetGroup], exclude_bots: bool = False) -> AnalysisResult:
     """Croise les membres des groupes en un seul passage.
 
     Construit ``membership`` (``user_id`` → ensemble des étiquettes de groupes), puis
     partitionne : présence dans **un seul** groupe vs **plusieurs** (avec la liste triée
-    des ``@groupes``). L'identité repose sur ``user_id`` (FR-012).
+    des ``@groupes``). L'identité repose sur ``user_id`` (FR-012). Si ``exclude_bots`` est
+    vrai, les comptes bots sont écartés des listes.
     """
     membership: dict[int, set[str]] = {}
     members_by_id: dict[int, Member] = {}
@@ -20,6 +21,8 @@ def compute_overlap(groups: Iterable[TargetGroup]) -> AnalysisResult:
     for group in groups:
         label = group.label
         for member in group.members:
+            if exclude_bots and member.is_bot:
+                continue
             membership.setdefault(member.user_id, set()).add(label)
             members_by_id.setdefault(member.user_id, member)
 

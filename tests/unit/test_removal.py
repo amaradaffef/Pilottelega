@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from pilottelega.core.models import AccessStatus, Member, TargetGroup
-from pilottelega.core.removal import plan_mass_removal, plan_user_removal
+from pilottelega.core.removal import (
+    RemovalFilter,
+    parse_protected,
+    plan_mass_removal,
+    plan_user_removal,
+)
 
 
 def _grp(handle, members):
@@ -45,3 +50,55 @@ def test_plan_user_removal_only_real_groups():
 def test_plan_user_removal_unknown_user():
     a = Member(1, "a")
     assert plan_user_removal([_grp("alpha", [a])], 999, ["@alpha"]) == []
+
+
+# ----- Comptes protégés ("mes comptes") --------------------------------------------------
+
+
+def test_parse_protected_ids_and_usernames():
+    ids, usernames = parse_protected("@Moi, autre 12345 t.me/perso https://t.me/@Encore")
+    assert ids == frozenset({12345})
+    assert usernames == frozenset({"moi", "autre", "perso", "encore"})
+
+
+def test_parse_protected_empty():
+    assert parse_protected("   ") == (frozenset(), frozenset())
+
+
+def test_protected_username_never_removed_mass():
+    me, other = Member(1, "Me"), Member(2, "other")
+    groups = [_grp("alpha", [me, other]), _grp("bravo", [me, other])]
+    filter_ = RemovalFilter.from_raw("@me")  # casse ignorée
+    plan = plan_mass_removal(groups, "@alpha", filter_)
+    # « me » est protégé → seul « other » est retiré de bravo.
+    assert {(r.group_identifier, r.user_id) for r in plan} == {("@bravo", 2)}
+
+
+def test_protected_id_never_removed_user_mode():
+    me = Member(42, "me")
+    groups = [_grp("alpha", [me]), _grp("bravo", [me])]
+    filter_ = RemovalFilter.from_raw("42")
+    assert plan_user_removal(groups, 42, ["@bravo"], filter_) == []
+
+
+# ----- Exclusion des bots ----------------------------------------------------------------
+
+
+def test_bots_excluded_from_mass_removal():
+    human, bot = Member(1, "human"), Member(2, "bot", is_bot=True)
+    groups = [_grp("alpha", [human, bot]), _grp("bravo", [human, bot])]
+    plan = plan_mass_removal(groups, "@alpha", RemovalFilter(exclude_bots=True))
+    assert {(r.group_identifier, r.user_id) for r in plan} == {("@bravo", 1)}
+
+
+def test_bots_kept_when_exclude_disabled():
+    bot = Member(2, "bot", is_bot=True)
+    groups = [_grp("alpha", [bot]), _grp("bravo", [bot])]
+    plan = plan_mass_removal(groups, "@alpha", RemovalFilter(exclude_bots=False))
+    assert {(r.group_identifier, r.user_id) for r in plan} == {("@bravo", 2)}
+
+
+def test_bot_excluded_from_user_mode():
+    bot = Member(2, "bot", is_bot=True)
+    groups = [_grp("alpha", [bot]), _grp("bravo", [bot])]
+    assert plan_user_removal(groups, 2, ["@bravo"], RemovalFilter(exclude_bots=True)) == []

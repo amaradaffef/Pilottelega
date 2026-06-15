@@ -55,9 +55,12 @@ class AnalysisTab(QWidget):
 
         self.retranslate()
 
-    def update_groups(self, groups: list[TargetGroup]) -> None:
-        """Recalcule le recoupement et met à jour les deux tables."""
-        self._result = compute_overlap(groups)
+    def update_groups(self, groups: list[TargetGroup], exclude_bots: bool = False) -> None:
+        """Recalcule le recoupement et met à jour les deux tables.
+
+        Si ``exclude_bots`` est vrai, les bots sont écartés des listes.
+        """
+        self._result = compute_overlap(groups, exclude_bots=exclude_bots)
         self._populate()
 
     def _populate(self) -> None:

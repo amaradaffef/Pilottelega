@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QPlainTextEdit,
     QProgressBar,
@@ -27,6 +28,7 @@ from pilottelega.app.i18n import tr
 from pilottelega.app.logging_conf import get_logger
 from pilottelega.core.link_parser import parse_links
 from pilottelega.core.models import TargetGroup
+from pilottelega.core.removal import RemovalFilter
 from pilottelega.core.telegram_service import TelegramService
 from pilottelega.ui.analysis_tab import AnalysisTab
 from pilottelega.ui.group_tab import GroupTab
@@ -73,6 +75,21 @@ class MainWindow(QMainWindow):
         self.thorough_check = QCheckBox()
         layout.addWidget(self.thorough_check)
 
+        # Comptes protégés (« mes comptes » à ne jamais retirer) + exclusion des bots.
+        protected_row = QHBoxLayout()
+        self.protected_label = QLabel()
+        protected_row.addWidget(self.protected_label)
+        self.protected_edit = QLineEdit()
+        self.protected_edit.setText(preferences.load_protected_accounts())
+        self.protected_edit.editingFinished.connect(self.on_filter_changed)
+        protected_row.addWidget(self.protected_edit)
+        layout.addLayout(protected_row)
+
+        self.exclude_bots_check = QCheckBox()
+        self.exclude_bots_check.setChecked(preferences.load_exclude_bots())
+        self.exclude_bots_check.stateChanged.connect(self.on_filter_changed)
+        layout.addWidget(self.exclude_bots_check)
+
         self.fetch_btn = QPushButton()
         self.fetch_btn.clicked.connect(self.on_fetch)
         layout.addWidget(self.fetch_btn)
@@ -103,6 +120,9 @@ class MainWindow(QMainWindow):
         self.links_label.setText(tr("main.links_label"))
         self.descr_check.setText(tr("main.fetch_descriptions"))
         self.thorough_check.setText(tr("main.thorough"))
+        self.protected_label.setText(tr("main.protected_label"))
+        self.protected_edit.setPlaceholderText(tr("main.protected_placeholder"))
+        self.exclude_bots_check.setText(tr("main.exclude_bots"))
         self.fetch_btn.setText(tr("main.fetch"))
         self.tabs.setTabText(self.tabs.indexOf(self.analysis_tab), tr("main.analysis_tab"))
         self.tabs.setTabText(self.tabs.indexOf(self.removal_tab), tr("main.removal_tab"))
@@ -117,6 +137,26 @@ class MainWindow(QMainWindow):
         i18n.set_language(code)
         preferences.save_language(code)
         self.retranslate()
+
+    def _current_filter(self) -> RemovalFilter:
+        """Construit la politique de filtrage depuis les champs « mes comptes » / bots."""
+        return RemovalFilter.from_raw(
+            self.protected_edit.text(),
+            exclude_bots=self.exclude_bots_check.isChecked(),
+        )
+
+    def _refresh_views(self) -> None:
+        """Réapplique le filtre courant à l'analyse et au retrait."""
+        filter_ = self._current_filter()
+        self.analysis_tab.update_groups(self.groups, exclude_bots=filter_.exclude_bots)
+        self.removal_tab.update_groups(self.groups, filter_)
+
+    def on_filter_changed(self) -> None:
+        """Mémorise les réglages de filtrage et recalcule les vues (sans re-récupérer)."""
+        preferences.save_protected_accounts(self.protected_edit.text())
+        preferences.save_exclude_bots(self.exclude_bots_check.isChecked())
+        if self.groups:
+            self._refresh_views()
 
     @asyncSlot()
     async def on_fetch(self) -> None:
@@ -141,8 +181,7 @@ class MainWindow(QMainWindow):
             self._add_group_tab(group)
             self.progress.setValue(index)
 
-        self.analysis_tab.update_groups(self.groups)
-        self.removal_tab.update_groups(self.groups)
+        self._refresh_views()
 
         message = tr("main.fetched_summary", count=len(valid))
         if invalid:

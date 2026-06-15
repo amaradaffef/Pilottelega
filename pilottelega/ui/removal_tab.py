@@ -29,7 +29,12 @@ from qasync import asyncSlot
 from pilottelega.app.i18n import tr
 from pilottelega.app.logging_conf import get_logger
 from pilottelega.core.models import TargetGroup
-from pilottelega.core.removal import Removal, plan_mass_removal, plan_user_removal
+from pilottelega.core.removal import (
+    Removal,
+    RemovalFilter,
+    plan_mass_removal,
+    plan_user_removal,
+)
 from pilottelega.core.telegram_service import TelegramService
 
 logger = get_logger(__name__)
@@ -42,6 +47,7 @@ class RemovalTab(QWidget):
         super().__init__()
         self.service = service
         self.groups: list[TargetGroup] = []
+        self._filter = RemovalFilter()
         self._plan: list[Removal] = []
         self._multi_members: dict[int, tuple[str, list[tuple[str, str]]]] = {}
 
@@ -133,9 +139,15 @@ class RemovalTab(QWidget):
 
     # ----- Données ------------------------------------------------------------------
 
-    def update_groups(self, groups: list[TargetGroup]) -> None:
-        """Recharge les groupes et les membres multi-groupes (candidats au retrait)."""
+    def update_groups(
+        self, groups: list[TargetGroup], filter_: RemovalFilter | None = None
+    ) -> None:
+        """Recharge les groupes et les membres multi-groupes (candidats au retrait).
+
+        ``filter_`` exclut les comptes protégés et (si activé) les bots des candidats.
+        """
         self.groups = groups
+        self._filter = filter_ or RemovalFilter()
         self._multi_members = self._compute_multi_members()
 
         self.keep_combo.clear()
@@ -152,6 +164,8 @@ class RemovalTab(QWidget):
         labels: dict[int, str] = {}
         for group in self.groups:
             for member in group.members:
+                if self._filter.is_excluded(member):
+                    continue
                 bucket = membership.setdefault(member.user_id, [])
                 if group.identifier not in {gi for gi, _ in bucket}:
                     bucket.append((group.identifier, group.label))
@@ -188,7 +202,7 @@ class RemovalTab(QWidget):
         mode = self.mode_combo.currentData()
         if mode == "mass":
             keep = self.keep_combo.currentData()
-            self._plan = plan_mass_removal(self.groups, keep) if keep else []
+            self._plan = plan_mass_removal(self.groups, keep, self._filter) if keep else []
         else:
             user_id = self.user_combo.currentData()
             remove_identifiers = [
@@ -197,7 +211,7 @@ class RemovalTab(QWidget):
                 if self.user_groups_list.item(i).checkState() == Qt.CheckState.Checked
             ]
             self._plan = (
-                plan_user_removal(self.groups, user_id, remove_identifiers)
+                plan_user_removal(self.groups, user_id, remove_identifiers, self._filter)
                 if user_id is not None
                 else []
             )

@@ -58,3 +58,22 @@ def test_same_member_twice_in_one_group_not_overlap():
     result = compute_overlap([g1])
     assert result.multi_group == []
     assert len(result.single_group) == 1
+
+
+def test_exclude_bots_filters_from_lists():
+    human = Member(1, "human")
+    bot = Member(2, "bot", is_bot=True)
+    g1 = _group("alpha", [human, bot])
+    g2 = _group("bravo", [human, bot])
+
+    result = compute_overlap([g1, g2], exclude_bots=True)
+
+    # Le bot (présent dans les deux) ne doit apparaître ni en multi ni en single.
+    assert {m.user_id for m, _ in result.multi_group} == {1}
+    assert all(m.user_id != 2 for m, _ in result.single_group)
+
+
+def test_bots_kept_by_default():
+    bot = Member(2, "bot", is_bot=True)
+    result = compute_overlap([_group("alpha", [bot])])
+    assert {m.user_id for m, _ in result.single_group} == {2}

@@ -11,10 +11,16 @@ est dans :mod:`pilottelega.core.telegram_service`. Deux stratégies :
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pilottelega.core.models import Member, TargetGroup
+
+# Préfixes de lien éventuels à retirer d'un compte protégé saisi (ex. « t.me/moi »).
+_LINK_PREFIXES: tuple[str, ...] = ("https://", "http://", "t.me/", "telegram.me/")
+# Séparateurs acceptés dans le champ « mes comptes » (virgule, espace, point-virgule, saut).
+_SPLIT = re.compile(r"[\s,;]+")
 
 
 @dataclass(frozen=True)
@@ -36,6 +42,67 @@ class RemovalResult:
     error: str | None = None
 
 
+def parse_protected(raw: str) -> tuple[frozenset[int], frozenset[str]]:
+    """Analyse la saisie « mes comptes » en ``(ids, usernames)``.
+
+    Chaque jeton peut être un ``@username``, un ``username`` nu, un identifiant numérique
+    ou un lien ``t.me/...``. Les noms d'utilisateur sont normalisés en minuscules (sans ``@``)
+    pour une comparaison insensible à la casse ; les jetons numériques deviennent des ids.
+    """
+    ids: set[int] = set()
+    usernames: set[str] = set()
+    for token in _SPLIT.split(raw.strip()):
+        if not token:
+            continue
+        # Retire les préfixes de lien empilés (ex. « https://t.me/moi »), puis « @ » et « / ».
+        changed = True
+        while changed:
+            changed = False
+            for prefix in _LINK_PREFIXES:
+                if token.lower().startswith(prefix):
+                    token = token[len(prefix) :]
+                    changed = True
+        token = token.lstrip("@").strip("/")
+        if not token:
+            continue
+        if token.isdigit():
+            ids.add(int(token))
+        else:
+            usernames.add(token.lower())
+    return frozenset(ids), frozenset(usernames)
+
+
+@dataclass(frozen=True)
+class RemovalFilter:
+    """Politique de protection appliquée aux retraits (et listes).
+
+    - ``protected_ids`` / ``protected_usernames`` : « mes comptes » à ne **jamais** retirer.
+    - ``exclude_bots`` : si vrai, les bots sont exclus des listes et jamais retirés.
+    """
+
+    protected_ids: frozenset[int] = field(default_factory=frozenset)
+    protected_usernames: frozenset[str] = field(default_factory=frozenset)
+    exclude_bots: bool = True
+
+    @classmethod
+    def from_raw(cls, raw: str, exclude_bots: bool = True) -> RemovalFilter:
+        """Construit un filtre depuis la saisie brute du champ « mes comptes »."""
+        ids, usernames = parse_protected(raw)
+        return cls(protected_ids=ids, protected_usernames=usernames, exclude_bots=exclude_bots)
+
+    def is_protected(self, member: Member) -> bool:
+        """Vrai si le membre fait partie des comptes protégés de l'utilisateur."""
+        if member.user_id in self.protected_ids:
+            return True
+        return bool(member.username and member.username.lower() in self.protected_usernames)
+
+    def is_excluded(self, member: Member) -> bool:
+        """Vrai si le membre ne doit jamais être retiré (protégé ou bot exclu)."""
+        if self.exclude_bots and member.is_bot:
+            return True
+        return self.is_protected(member)
+
+
 def _membership(
     groups: Iterable[TargetGroup],
 ) -> tuple[dict[int, list[tuple[str, str]]], dict[int, Member]]:
@@ -52,15 +119,23 @@ def _membership(
     return membership, members
 
 
-def plan_mass_removal(groups: Iterable[TargetGroup], keep_identifier: str) -> list[Removal]:
+def plan_mass_removal(
+    groups: Iterable[TargetGroup],
+    keep_identifier: str,
+    filter_: RemovalFilter | None = None,
+) -> list[Removal]:
     """Retraits pour ne garder chaque membre multi-groupes que dans ``keep_identifier``.
 
     Un membre n'est traité que s'il est présent dans le groupe à conserver ; il est alors
     retiré de tous ses autres groupes. Les membres absents du groupe conservé sont ignorés.
+    Les comptes protégés et (si activé) les bots ne sont jamais retirés (``filter_``).
     """
+    filter_ = filter_ or RemovalFilter()
     membership, members = _membership(groups)
     removals: list[Removal] = []
     for user_id, group_list in membership.items():
+        if filter_.is_excluded(members[user_id]):
+            continue
         identifiers = [gi for gi, _ in group_list]
         if len(identifiers) <= 1:
             continue
@@ -73,11 +148,20 @@ def plan_mass_removal(groups: Iterable[TargetGroup], keep_identifier: str) -> li
 
 
 def plan_user_removal(
-    groups: Iterable[TargetGroup], user_id: int, remove_identifiers: Iterable[str]
+    groups: Iterable[TargetGroup],
+    user_id: int,
+    remove_identifiers: Iterable[str],
+    filter_: RemovalFilter | None = None,
 ) -> list[Removal]:
-    """Retraits explicites d'un membre donné depuis les groupes listés."""
+    """Retraits explicites d'un membre donné depuis les groupes listés.
+
+    Un compte protégé ou un bot exclu (``filter_``) n'est jamais retiré : on renvoie ``[]``.
+    """
+    filter_ = filter_ or RemovalFilter()
     membership, members = _membership(groups)
     if user_id not in members:
+        return []
+    if filter_.is_excluded(members[user_id]):
         return []
     user_label = members[user_id].label
     id_to_label = {gi: label for bucket in membership.values() for gi, label in bucket}
