@@ -67,12 +67,12 @@ def save_exclude_bots(value: bool) -> None:
     _save("exclude_bots", value)
 
 
-def load_protected_groups() -> list[str]:
-    """Retourne les identifiants des groupes cochés « à ne jamais retirer »."""
-    raw = _load().get("protected_groups", [])
+def load_protected_persons() -> list[str]:
+    """Retourne la liste des personnes protégées (@pseudos / IDs, telles que saisies)."""
+    raw = _load().get("protected_persons", [])
     return [str(item) for item in raw] if isinstance(raw, list) else []
 
 
-def save_protected_groups(identifiers: list[str]) -> None:
-    """Enregistre les identifiants des groupes protégés (cases cochées)."""
-    _save("protected_groups", list(identifiers))
+def save_protected_persons(entries: list[str]) -> None:
+    """Enregistre la liste des personnes à ne jamais retirer."""
+    _save("protected_persons", list(entries))

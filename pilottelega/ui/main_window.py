@@ -7,14 +7,13 @@ Interface traduisible (FR/EN/RU) avec sélecteur de langue.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
-    QListWidgetItem,
     QMainWindow,
     QPlainTextEdit,
     QProgressBar,
@@ -77,16 +76,27 @@ class MainWindow(QMainWindow):
         self.thorough_check = QCheckBox()
         layout.addWidget(self.thorough_check)
 
-        # « Mes groupes à ne jamais retirer » : liste de cases à cocher (peuplée après fetch).
-        self._saved_protected_groups: set[str] = set(preferences.load_protected_groups())
-        self.protected_groups_label = QLabel()
-        layout.addWidget(self.protected_groups_label)
-        self.protected_groups_list = QListWidget()
-        self.protected_groups_list.setMaximumHeight(120)
-        self.protected_groups_list.itemChanged.connect(self._on_protected_groups_changed)
-        layout.addWidget(self.protected_groups_list)
+        # « Personnes à ne jamais retirer » : liste gérée de @pseudos / IDs Telegram.
+        self._protected_persons: list[str] = preferences.load_protected_persons()
+        self.protected_label = QLabel()
+        layout.addWidget(self.protected_label)
+        person_row = QHBoxLayout()
+        self.protected_input = QLineEdit()
+        self.protected_input.returnPressed.connect(self._on_add_protected_person)
+        person_row.addWidget(self.protected_input)
+        self.protected_add_btn = QPushButton()
+        self.protected_add_btn.clicked.connect(self._on_add_protected_person)
+        person_row.addWidget(self.protected_add_btn)
+        self.protected_remove_btn = QPushButton()
+        self.protected_remove_btn.clicked.connect(self._on_remove_protected_person)
+        person_row.addWidget(self.protected_remove_btn)
+        layout.addLayout(person_row)
+        self.protected_list = QListWidget()
+        self.protected_list.setMaximumHeight(100)
+        self.protected_list.addItems(self._protected_persons)
+        layout.addWidget(self.protected_list)
 
-        # Exclusion des bots (gouverne aussi l'analyse et les listes de groupes).
+        # Exclusion des bots (gouverne aussi l'analyse et les listes).
         self.exclude_bots_check = QCheckBox()
         self.exclude_bots_check.setChecked(preferences.load_exclude_bots())
         self.exclude_bots_check.stateChanged.connect(self.on_filter_changed)
@@ -125,7 +135,10 @@ class MainWindow(QMainWindow):
         self.links_label.setText(tr("main.links_label"))
         self.descr_check.setText(tr("main.fetch_descriptions"))
         self.thorough_check.setText(tr("main.thorough"))
-        self.protected_groups_label.setText(tr("main.protected_groups_label"))
+        self.protected_label.setText(tr("main.protected_label"))
+        self.protected_input.setPlaceholderText(tr("main.protected_placeholder"))
+        self.protected_add_btn.setText(tr("main.protected_add"))
+        self.protected_remove_btn.setText(tr("main.protected_remove"))
         self.exclude_bots_check.setText(tr("main.exclude_bots"))
         self.fetch_btn.setText(tr("main.fetch"))
         self.tabs.setTabText(self.tabs.indexOf(self.analysis_tab), tr("main.analysis_tab"))
@@ -142,34 +155,37 @@ class MainWindow(QMainWindow):
         preferences.save_language(code)
         self.retranslate()
 
-    def _checked_protected_groups(self) -> frozenset[str]:
-        """Identifiants des groupes cochés « à ne jamais retirer »."""
-        checked: set[str] = set()
-        for i in range(self.protected_groups_list.count()):
-            item = self.protected_groups_list.item(i)
-            if item.checkState() == Qt.CheckState.Checked:
-                checked.add(str(item.data(Qt.ItemDataRole.UserRole)))
-        return frozenset(checked)
-
     def _current_filter(self) -> RemovalFilter:
-        """Construit la politique de filtrage depuis les groupes cochés et l'option bots."""
-        return RemovalFilter(
-            protected_group_identifiers=self._checked_protected_groups(),
+        """Construit la politique : personnes protégées (@pseudo/ID) + exclusion des bots."""
+        return RemovalFilter.from_raw(
+            "\n".join(self._protected_persons),
             exclude_bots=self.exclude_bots_check.isChecked(),
         )
 
-    def _populate_protected_groups(self) -> None:
-        """(Re)remplit la liste de cases des groupes, en restaurant les coches enregistrées."""
-        self.protected_groups_list.blockSignals(True)
-        self.protected_groups_list.clear()
-        for group in self.groups:
-            item = QListWidgetItem(group.label)
-            item.setData(Qt.ItemDataRole.UserRole, group.identifier)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            checked = group.identifier in self._saved_protected_groups
-            item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
-            self.protected_groups_list.addItem(item)
-        self.protected_groups_list.blockSignals(False)
+    def _on_add_protected_person(self) -> None:
+        """Ajoute la saisie (@pseudo ou ID) à la liste des personnes protégées."""
+        text = self.protected_input.text().strip()
+        self.protected_input.clear()
+        if not text or text.lower() in {p.lower() for p in self._protected_persons}:
+            return
+        self._protected_persons.append(text)
+        self.protected_list.addItem(text)
+        self._save_protected_persons()
+
+    def _on_remove_protected_person(self) -> None:
+        """Retire de la liste la personne protégée sélectionnée."""
+        row = self.protected_list.currentRow()
+        if row < 0:
+            return
+        self.protected_list.takeItem(row)
+        del self._protected_persons[row]
+        self._save_protected_persons()
+
+    def _save_protected_persons(self) -> None:
+        """Mémorise la liste des personnes protégées et recalcule les vues."""
+        preferences.save_protected_persons(self._protected_persons)
+        if self.groups:
+            self._refresh_views()
 
     def _refresh_views(self) -> None:
         """Réapplique le filtre courant aux onglets de groupe, à l'analyse et au retrait."""
@@ -181,13 +197,6 @@ class MainWindow(QMainWindow):
         self.removal_tab.set_exclude_bots(filter_.exclude_bots)
         self.analysis_tab.update_groups(self.groups, exclude_bots=filter_.exclude_bots)
         self.removal_tab.update_groups(self.groups, filter_)
-
-    def _on_protected_groups_changed(self, _item: QListWidgetItem) -> None:
-        """Une coche de groupe a changé : mémorise la sélection et recalcule."""
-        self._saved_protected_groups = set(self._checked_protected_groups())
-        preferences.save_protected_groups(sorted(self._saved_protected_groups))
-        if self.groups:
-            self._refresh_views()
 
     def _on_removal_exclude_bots(self, value: bool) -> None:
         """La case bots de l'onglet Suppression a changé : pilote le réglage global."""
@@ -223,7 +232,6 @@ class MainWindow(QMainWindow):
             self._add_group_tab(group)
             self.progress.setValue(index)
 
-        self._populate_protected_groups()
         self._refresh_views()
 
         message = tr("main.fetched_summary", count=len(valid))

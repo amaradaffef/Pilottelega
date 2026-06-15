@@ -102,24 +102,3 @@ def test_bot_excluded_from_user_mode():
     bot = Member(2, "bot", is_bot=True)
     groups = [_grp("alpha", [bot]), _grp("bravo", [bot])]
     assert plan_user_removal(groups, 2, ["@bravo"], RemovalFilter(exclude_bots=True)) == []
-
-
-# ----- Groupes protégés ("mes groupes à ne jamais retirer") ------------------------------
-
-
-def test_protected_group_never_loses_members_mass():
-    a = Member(1, "a")
-    groups = [_grp("alpha", [a]), _grp("bravo", [a]), _grp("charlie", [a])]
-    # On garde alpha, mais bravo est protégé → a n'est retiré que de charlie.
-    filter_ = RemovalFilter(protected_group_identifiers=frozenset({"@bravo"}))
-    plan = plan_mass_removal(groups, "@alpha", filter_)
-    assert {(r.group_identifier, r.user_id) for r in plan} == {("@charlie", 1)}
-
-
-def test_protected_group_ignored_in_user_mode():
-    a = Member(1, "a")
-    groups = [_grp("alpha", [a]), _grp("bravo", [a]), _grp("charlie", [a])]
-    filter_ = RemovalFilter(protected_group_identifiers=frozenset({"@bravo"}))
-    # On demande bravo (protégé) + charlie → seul charlie est retenu.
-    plan = plan_user_removal(groups, 1, ["@bravo", "@charlie"], filter_)
-    assert [(r.group_identifier, r.user_id) for r in plan] == [("@charlie", 1)]
