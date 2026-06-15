@@ -57,16 +57,6 @@ def save_language(lang: str) -> None:
     _save("language", lang)
 
 
-def load_protected_accounts() -> str:
-    """Retourne la saisie « mes comptes à ne jamais retirer » (chaîne brute)."""
-    return str(_load().get("protected_accounts", ""))
-
-
-def save_protected_accounts(raw: str) -> None:
-    """Enregistre la saisie « mes comptes à ne jamais retirer »."""
-    _save("protected_accounts", raw)
-
-
 def load_exclude_bots() -> bool:
     """Retourne la préférence d'exclusion des bots (activée par défaut)."""
     return bool(_load().get("exclude_bots", True))
@@ -75,3 +65,14 @@ def load_exclude_bots() -> bool:
 def save_exclude_bots(value: bool) -> None:
     """Enregistre la préférence d'exclusion des bots."""
     _save("exclude_bots", value)
+
+
+def load_protected_groups() -> list[str]:
+    """Retourne les identifiants des groupes cochés « à ne jamais retirer »."""
+    raw = _load().get("protected_groups", [])
+    return [str(item) for item in raw] if isinstance(raw, list) else []
+
+
+def save_protected_groups(identifiers: list[str]) -> None:
+    """Enregistre les identifiants des groupes protégés (cases cochées)."""
+    _save("protected_groups", list(identifiers))

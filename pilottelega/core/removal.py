@@ -77,11 +77,13 @@ class RemovalFilter:
     """Politique de protection appliquée aux retraits (et listes).
 
     - ``protected_ids`` / ``protected_usernames`` : « mes comptes » à ne **jamais** retirer.
+    - ``protected_group_identifiers`` : « mes groupes » dont on ne retire **jamais** personne.
     - ``exclude_bots`` : si vrai, les bots sont exclus des listes et jamais retirés.
     """
 
     protected_ids: frozenset[int] = field(default_factory=frozenset)
     protected_usernames: frozenset[str] = field(default_factory=frozenset)
+    protected_group_identifiers: frozenset[str] = field(default_factory=frozenset)
     exclude_bots: bool = True
 
     @classmethod
@@ -95,6 +97,10 @@ class RemovalFilter:
         if member.user_id in self.protected_ids:
             return True
         return bool(member.username and member.username.lower() in self.protected_usernames)
+
+    def is_protected_group(self, identifier: str) -> bool:
+        """Vrai si ce groupe est protégé : on n'en retire jamais aucun membre."""
+        return identifier in self.protected_group_identifiers
 
     def is_excluded(self, member: Member) -> bool:
         """Vrai si le membre ne doit jamais être retiré (protégé ou bot exclu)."""
@@ -128,7 +134,8 @@ def plan_mass_removal(
 
     Un membre n'est traité que s'il est présent dans le groupe à conserver ; il est alors
     retiré de tous ses autres groupes. Les membres absents du groupe conservé sont ignorés.
-    Les comptes protégés et (si activé) les bots ne sont jamais retirés (``filter_``).
+    Les comptes protégés et (si activé) les bots ne sont jamais retirés ; on ne retire jamais
+    personne d'un groupe protégé (``filter_``).
     """
     filter_ = filter_ or RemovalFilter()
     membership, members = _membership(groups)
@@ -142,8 +149,9 @@ def plan_mass_removal(
         if keep_identifier not in identifiers:
             continue
         for identifier, label in group_list:
-            if identifier != keep_identifier:
-                removals.append(Removal(identifier, label, user_id, members[user_id].label))
+            if identifier == keep_identifier or filter_.is_protected_group(identifier):
+                continue
+            removals.append(Removal(identifier, label, user_id, members[user_id].label))
     return removals
 
 
@@ -156,6 +164,7 @@ def plan_user_removal(
     """Retraits explicites d'un membre donné depuis les groupes listés.
 
     Un compte protégé ou un bot exclu (``filter_``) n'est jamais retiré : on renvoie ``[]``.
+    Les groupes protégés sont ignorés même s'ils sont demandés.
     """
     filter_ = filter_ or RemovalFilter()
     membership, members = _membership(groups)
@@ -169,5 +178,5 @@ def plan_user_removal(
     return [
         Removal(identifier, id_to_label.get(identifier, identifier), user_id, user_label)
         for identifier in remove_identifiers
-        if identifier in wanted
+        if identifier in wanted and not filter_.is_protected_group(identifier)
     ]

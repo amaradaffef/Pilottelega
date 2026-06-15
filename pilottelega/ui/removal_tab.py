@@ -6,7 +6,7 @@ des résultats. Nécessite les droits admin « exclure des utilisateurs » dans 
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -43,6 +43,9 @@ logger = get_logger(__name__)
 class RemovalTab(QWidget):
     """Sélection des retraits, aperçu, puis exécution confirmée."""
 
+    # Émis quand la case « Exclure les bots » de cet onglet change (synchronisée globalement).
+    excludeBotsChanged = Signal(bool)
+
     def __init__(self, service: TelegramService) -> None:
         super().__init__()
         self.service = service
@@ -57,6 +60,11 @@ class RemovalTab(QWidget):
         self.admin_note.setWordWrap(True)
         self.admin_note.setStyleSheet("color: #ef6c00;")
         layout.addWidget(self.admin_note)
+
+        # Exclure les bots, directement au moment du retrait (piloté/synchronisé globalement).
+        self.exclude_bots_check = QCheckBox()
+        self.exclude_bots_check.stateChanged.connect(self._on_exclude_bots_toggled)
+        layout.addWidget(self.exclude_bots_check)
 
         # Sélecteur de mode
         mode_row = QHBoxLayout()
@@ -136,6 +144,20 @@ class RemovalTab(QWidget):
 
         self.retranslate()
         self._on_mode_changed()
+
+    # ----- Exclusion des bots (synchronisée avec la fenêtre principale) --------------
+
+    def _on_exclude_bots_toggled(self) -> None:
+        """Relaie le changement de la case bots vers la fenêtre principale."""
+        self.excludeBotsChanged.emit(self.exclude_bots_check.isChecked())
+
+    def set_exclude_bots(self, value: bool) -> None:
+        """Met la case bots à ``value`` sans réémettre (synchronisation depuis l'extérieur)."""
+        if value == self.exclude_bots_check.isChecked():
+            return
+        self.exclude_bots_check.blockSignals(True)
+        self.exclude_bots_check.setChecked(value)
+        self.exclude_bots_check.blockSignals(False)
 
     # ----- Données ------------------------------------------------------------------
 
@@ -293,6 +315,7 @@ class RemovalTab(QWidget):
     def retranslate(self) -> None:
         """Met à jour tous les textes selon la langue courante."""
         self.admin_note.setText("⚠ " + tr("removal.admin_note"))
+        self.exclude_bots_check.setText(tr("main.exclude_bots"))
         self.mode_label.setText(tr("removal.mode"))
         self.mode_combo.setItemText(0, tr("removal.mode_mass"))
         self.mode_combo.setItemText(1, tr("removal.mode_user"))
