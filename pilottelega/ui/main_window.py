@@ -146,8 +146,12 @@ class MainWindow(QMainWindow):
         )
 
     def _refresh_views(self) -> None:
-        """Réapplique le filtre courant à l'analyse et au retrait."""
+        """Réapplique le filtre courant aux onglets de groupe, à l'analyse et au retrait."""
         filter_ = self._current_filter()
+        for index in range(self.tabs.count()):
+            widget = self.tabs.widget(index)
+            if isinstance(widget, GroupTab):
+                widget.set_exclude_bots(filter_.exclude_bots)
         self.analysis_tab.update_groups(self.groups, exclude_bots=filter_.exclude_bots)
         self.removal_tab.update_groups(self.groups, filter_)
 
@@ -195,4 +199,5 @@ class MainWindow(QMainWindow):
         self.groups = [g for g in self.groups if g.identifier != group.identifier]
         self.groups.append(group)
         # Insère l'onglet du groupe avant les onglets fixes Analyse/Retirer.
-        self.tabs.insertTab(self.tabs.indexOf(self.analysis_tab), GroupTab(group), group.label)
+        tab = GroupTab(group, exclude_bots=self.exclude_bots_check.isChecked())
+        self.tabs.insertTab(self.tabs.indexOf(self.analysis_tab), tab, group.label)

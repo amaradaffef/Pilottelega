@@ -9,6 +9,7 @@ from pilottelega.core.export import (
     GROUP_COLUMNS,
     export_analysis_to_xlsx,
     export_group_to_xlsx,
+    filter_members,
 )
 from pilottelega.core.models import AccessStatus, Member, TargetGroup
 
@@ -73,6 +74,25 @@ def test_export_group_writes_all_fields(tmp_path):
     )
     # Bob : bot, champs absents relus None par openpyxl.
     assert rows[2] == (2, None, "Botty", None, True, False, False, None, None, None)
+
+
+def test_filter_members_excludes_bots():
+    human = Member(1, "human")
+    bot = Member(2, "bot", is_bot=True)
+    assert filter_members([human, bot], exclude_bots=True) == [human]
+    assert filter_members([human, bot], exclude_bots=False) == [human, bot]
+
+
+def test_export_group_excludes_bots_when_requested(tmp_path):
+    human = Member(user_id=1, username="alice", first_name="Alice")
+    bot = Member(user_id=2, username="botty", first_name="Botty", is_bot=True)
+    group = _group("alpha", [human, bot])
+    path = tmp_path / "group.xlsx"
+    export_group_to_xlsx(group, str(path), exclude_bots=True)
+
+    ws = load_workbook(path).active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    assert [row[0] for row in rows] == [1]  # le bot (id 2) est absent du fichier
 
 
 def test_export_analysis_has_all_columns(tmp_path):

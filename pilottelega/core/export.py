@@ -6,7 +6,7 @@ Logique pure (pas de Qt). Les en-têtes sont fournis via une fonction de traduct
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from openpyxl import Workbook
 
@@ -30,6 +30,13 @@ GROUP_COLUMNS: list[str] = [
 ]
 
 
+def filter_members(members: Iterable[Member], exclude_bots: bool) -> list[Member]:
+    """Renvoie les membres en excluant les bots si ``exclude_bots`` est vrai."""
+    if not exclude_bots:
+        return list(members)
+    return [m for m in members if not m.is_bot]
+
+
 def member_row(member: Member) -> list[object]:
     """Ligne de valeurs d'un membre, dans l'ordre de :data:`GROUP_COLUMNS`."""
     return [
@@ -51,14 +58,20 @@ def _sheet_name(name: str) -> str:
 
 
 def export_group_to_xlsx(
-    group: TargetGroup, path: str, t: Callable[[str], str] = lambda k: k
+    group: TargetGroup,
+    path: str,
+    t: Callable[[str], str] = lambda k: k,
+    exclude_bots: bool = False,
 ) -> None:
-    """Écrit les membres d'un ``TargetGroup`` dans un fichier ``.xlsx`` (toutes colonnes)."""
+    """Écrit les membres d'un ``TargetGroup`` dans un fichier ``.xlsx`` (toutes colonnes).
+
+    Si ``exclude_bots`` est vrai, les comptes bots sont omis du fichier.
+    """
     wb = Workbook()
     ws = wb.active
     ws.title = _sheet_name(t("export.sheet_group"))
     ws.append(GROUP_COLUMNS)
-    for member in group.members:
+    for member in filter_members(group.members, exclude_bots):
         ws.append(member_row(member))
     wb.save(path)
 

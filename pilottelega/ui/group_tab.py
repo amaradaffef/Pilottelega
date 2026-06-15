@@ -17,8 +17,13 @@ from PySide6.QtWidgets import (
 
 from pilottelega.app.i18n import tr
 from pilottelega.app.logging_conf import get_logger
-from pilottelega.core.export import GROUP_COLUMNS, export_group_to_xlsx, member_row
-from pilottelega.core.models import AccessStatus, TargetGroup
+from pilottelega.core.export import (
+    GROUP_COLUMNS,
+    export_group_to_xlsx,
+    filter_members,
+    member_row,
+)
+from pilottelega.core.models import AccessStatus, Member, TargetGroup
 
 logger = get_logger(__name__)
 
@@ -33,9 +38,10 @@ _STATUS_COLORS = {
 class GroupTab(QWidget):
     """Vue d'un ``TargetGroup``."""
 
-    def __init__(self, group: TargetGroup) -> None:
+    def __init__(self, group: TargetGroup, exclude_bots: bool = False) -> None:
         super().__init__()
         self.group = group
+        self._exclude_bots = exclude_bots
         layout = QVBoxLayout(self)
 
         self.badge = QLabel()
@@ -49,25 +55,45 @@ class GroupTab(QWidget):
         self.export_btn.clicked.connect(self.on_export)
         layout.addWidget(self.export_btn)
 
-        self.table = QTableWidget(len(group.members), len(GROUP_COLUMNS))
+        self.table = QTableWidget(0, len(GROUP_COLUMNS))
         self.table.setHorizontalHeaderLabels(GROUP_COLUMNS)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        for row, member in enumerate(group.members):
-            for col, value in enumerate(member_row(member)):
-                self.table.setItem(row, col, QTableWidgetItem(str(value)))
         layout.addWidget(self.table)
 
+        self._populate()
         self.retranslate()
+
+    def _members(self) -> list[Member]:
+        """Membres affichés (bots exclus si l'option est active)."""
+        return filter_members(self.group.members, self._exclude_bots)
+
+    def _populate(self) -> None:
+        """(Re)remplit la table des membres selon le filtre courant."""
+        members = self._members()
+        self.table.setRowCount(len(members))
+        for row, member in enumerate(members):
+            for col, value in enumerate(member_row(member)):
+                self.table.setItem(row, col, QTableWidgetItem(str(value)))
+
+    def set_exclude_bots(self, exclude_bots: bool) -> None:
+        """Met à jour le filtre des bots et rafraîchit la table + le badge."""
+        if exclude_bots == self._exclude_bots:
+            return
+        self._exclude_bots = exclude_bots
+        self._populate()
+        self.badge.setText(self._status_text())
 
     def _status_text(self) -> str:
         status = tr(f"status.{self.group.access_status.value}")
-        fetched = len(self.group.members)
+        shown = len(self._members())  # membres affichés (bots éventuellement exclus)
         total = self.group.total_count
-        if total is not None and total != fetched:
-            text = tr("group.status_summary_total", status=status, fetched=fetched, total=total)
+        # La « partialité » reflète une restriction Telegram : on la juge sur le nombre brut lu.
+        partial = total is not None and len(self.group.members) < total
+        if partial:
+            text = tr("group.status_summary_total", status=status, fetched=shown, total=total)
         else:
-            text = tr("group.status_summary", status=status, count=fetched)
+            text = tr("group.status_summary", status=status, count=shown)
         if self.group.access_status is AccessStatus.ERROR and self.group.error_message:
             text += f" : {self.group.error_message}"
         return text
@@ -89,7 +115,7 @@ class GroupTab(QWidget):
         if not path:
             return
         try:
-            export_group_to_xlsx(self.group, path, tr)
+            export_group_to_xlsx(self.group, path, tr, exclude_bots=self._exclude_bots)
         except Exception as exc:  # noqa: BLE001 - retour utilisateur clair
             logger.warning("Échec export groupe: %s", type(exc).__name__)
             QMessageBox.warning(self, tr("app.title"), tr("export.failed", error=str(exc)))
