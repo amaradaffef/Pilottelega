@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
         self.member_search.textChanged.connect(self._populate_member_picker)
         picker_col.addWidget(self.member_search)
         self.member_picker = QListWidget()
-        self.member_picker.setMaximumHeight(260)
+        self.member_picker.setMaximumHeight(300)
         picker_col.addWidget(self.member_picker)
         self.protected_add_btn = QPushButton()
         self.protected_add_btn.clicked.connect(self._on_add_checked_members)
