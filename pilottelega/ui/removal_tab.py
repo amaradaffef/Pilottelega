@@ -6,6 +6,8 @@ des résultats. Nécessite les droits admin « exclure des utilisateurs » dans 
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -26,8 +28,10 @@ from PySide6.QtWidgets import (
 )
 from qasync import asyncSlot
 
+from pilottelega.app import history_store
 from pilottelega.app.i18n import tr
 from pilottelega.app.logging_conf import get_logger
+from pilottelega.core.history import records_from_results
 from pilottelega.core.models import TargetGroup
 from pilottelega.core.removal import (
     Removal,
@@ -45,6 +49,8 @@ class RemovalTab(QWidget):
 
     # Émis quand la case « Exclure les bots » de cet onglet change (synchronisée globalement).
     excludeBotsChanged = Signal(bool)
+    # Émis après une exécution : l'historique local a été mis à jour.
+    historyChanged = Signal()
 
     def __init__(self, service: TelegramService) -> None:
         super().__init__()
@@ -353,6 +359,12 @@ class RemovalTab(QWidget):
             self.status.setText(tr("removal.running", done=done, total=total))
 
         results = await self.service.execute_removals(selected, ban=ban, progress=on_progress)
+
+        # Consigne l'action dans l'historique local (persistant) puis notifie l'onglet dédié.
+        timestamp = datetime.now().isoformat(timespec="seconds")
+        history_store.append_records(records_from_results(results, ban, timestamp))
+        self.historyChanged.emit()
+
         ok = sum(1 for r in results if r.ok)
         failed = len(results) - ok
         message = tr("removal.done", ok=ok, failed=failed)

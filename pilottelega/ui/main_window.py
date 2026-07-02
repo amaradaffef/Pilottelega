@@ -37,6 +37,7 @@ from pilottelega.core.removal import RemovalFilter
 from pilottelega.core.telegram_service import TelegramService
 from pilottelega.ui.analysis_tab import AnalysisTab
 from pilottelega.ui.group_tab import GroupTab
+from pilottelega.ui.history_tab import HistoryTab
 from pilottelega.ui.removal_tab import RemovalTab
 
 logger = get_logger(__name__)
@@ -150,6 +151,11 @@ class MainWindow(QMainWindow):
         self.removal_tab.set_exclude_bots(self.exclude_bots_check.isChecked())
         self.tabs.addTab(self.removal_tab, tr("main.removal_tab"))
 
+        # Onglet Historique : rafraîchi après chaque exécution de retrait.
+        self.history_tab = HistoryTab()
+        self.removal_tab.historyChanged.connect(self.history_tab.reload)
+        self.tabs.addTab(self.history_tab, tr("main.history_tab"))
+
         # Zone défilable : si le contenu dépasse la hauteur de l'écran, une barre de
         # défilement apparaît au lieu de rejeter les champs sous la barre des tâches.
         scroll = QScrollArea()
@@ -173,6 +179,7 @@ class MainWindow(QMainWindow):
         self.fetch_btn.setText(tr("main.fetch"))
         self.tabs.setTabText(self.tabs.indexOf(self.analysis_tab), tr("main.analysis_tab"))
         self.tabs.setTabText(self.tabs.indexOf(self.removal_tab), tr("main.removal_tab"))
+        self.tabs.setTabText(self.tabs.indexOf(self.history_tab), tr("main.history_tab"))
         for index in range(self.tabs.count()):
             widget = self.tabs.widget(index)
             if hasattr(widget, "retranslate"):
