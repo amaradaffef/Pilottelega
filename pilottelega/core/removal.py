@@ -83,20 +83,32 @@ class RemovalFilter:
 
     - ``protected_ids`` / ``protected_usernames`` : « mes personnes » à ne **jamais** retirer.
     - ``exclude_bots`` : si vrai, les bots sont exclus des listes et jamais retirés.
+    - ``self_user_id`` : le compte connecté, toujours protégé (on ne peut pas se retirer
+      soi-même — Telegram renvoie sinon ``PARTICIPANT_ID_INVALID``).
     """
 
     protected_ids: frozenset[int] = field(default_factory=frozenset)
     protected_usernames: frozenset[str] = field(default_factory=frozenset)
     exclude_bots: bool = True
+    self_user_id: int | None = None
 
     @classmethod
-    def from_raw(cls, raw: str, exclude_bots: bool = True) -> RemovalFilter:
+    def from_raw(
+        cls, raw: str, exclude_bots: bool = True, self_user_id: int | None = None
+    ) -> RemovalFilter:
         """Construit un filtre depuis la saisie brute des personnes protégées."""
         ids, usernames = parse_protected(raw)
-        return cls(protected_ids=ids, protected_usernames=usernames, exclude_bots=exclude_bots)
+        return cls(
+            protected_ids=ids,
+            protected_usernames=usernames,
+            exclude_bots=exclude_bots,
+            self_user_id=self_user_id,
+        )
 
     def is_protected(self, member: Member) -> bool:
-        """Vrai si le membre fait partie des personnes protégées de l'utilisateur."""
+        """Vrai si le membre fait partie des personnes protégées (ou est le compte connecté)."""
+        if self.self_user_id is not None and member.user_id == self.self_user_id:
+            return True
         if member.user_id in self.protected_ids:
             return True
         return bool(member.username and member.username.lower() in self.protected_usernames)

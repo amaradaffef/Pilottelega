@@ -49,6 +49,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.service = service
         self.groups: list[TargetGroup] = []
+        # Compte connecté : toujours exclu des retraits (on ne peut pas se retirer soi-même).
+        self._self_user_id: int | None = None
+        self._self_label: str | None = None
         # Taille adaptée à l'écran disponible : jamais plus grande que le bureau utile
         # (sinon le bas de la fenêtre passe sous la barre des tâches — cf. capture utilisateur).
         screen = QGuiApplication.primaryScreen()
@@ -183,10 +186,11 @@ class MainWindow(QMainWindow):
         self.retranslate()
 
     def _current_filter(self) -> RemovalFilter:
-        """Construit la politique : personnes protégées (@pseudo/ID) + exclusion des bots."""
+        """Construit la politique : personnes protégées (@pseudo/ID) + bots + compte connecté."""
         return RemovalFilter.from_raw(
             "\n".join(self._protected_persons),
             exclude_bots=self.exclude_bots_check.isChecked(),
+            self_user_id=self._self_user_id,
         )
 
     @staticmethod
@@ -269,6 +273,7 @@ class MainWindow(QMainWindow):
             if isinstance(widget, GroupTab):
                 widget.set_exclude_bots(filter_.exclude_bots)
         self.removal_tab.set_exclude_bots(filter_.exclude_bots)
+        self.removal_tab.set_self_account(self._self_label)
         self.analysis_tab.update_groups(self.groups, exclude_bots=filter_.exclude_bots)
         self.removal_tab.update_groups(self.groups, filter_)
 
@@ -290,6 +295,15 @@ class MainWindow(QMainWindow):
         if not valid:
             self.status.setText(tr("main.no_valid_links"))
             return
+
+        # Identifie le compte connecté (pour ne jamais se retirer soi-même).
+        if self._self_user_id is None:
+            me = await self.service.get_me()
+            if me is not None:
+                self._self_user_id = getattr(me, "id", None)
+                uname = getattr(me, "username", None)
+                first = getattr(me, "first_name", None)
+                self._self_label = f"@{uname}" if uname else (first or str(self._self_user_id))
 
         self.fetch_btn.setEnabled(False)
         self.progress.setVisible(True)

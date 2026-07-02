@@ -88,6 +88,9 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "removal.admin_note": (
             "Nécessite les droits admin « exclure des utilisateurs » dans les groupes concernés."
         ),
+        "removal.self_excluded": (
+            "Votre compte {account} est exclu des retraits (on ne peut pas se retirer soi-même)."
+        ),
         # Onglet de groupe
         "group.member_col": "Membre",
         "group.id_col": "ID",
@@ -179,6 +182,9 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "removal.done": "Done: {ok} succeeded, {failed} failed.",
         "removal.first_error": "First error: {error}",
         "removal.admin_note": ("Requires admin 'ban users' rights in the affected groups."),
+        "removal.self_excluded": (
+            "Your account {account} is excluded from removals (you cannot remove yourself)."
+        ),
         "group.member_col": "Member",
         "group.id_col": "ID",
         "group.status_summary": "{status} — {count} member(s)",
@@ -268,6 +274,9 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "removal.first_error": "Первая ошибка: {error}",
         "removal.admin_note": (
             "Требуются права администратора «блокировать пользователей» в группах."
+        ),
+        "removal.self_excluded": (
+            "Ваш аккаунт {account} исключён из удаления (нельзя удалить самого себя)."
         ),
         "group.member_col": "Участник",
         "group.id_col": "ID",

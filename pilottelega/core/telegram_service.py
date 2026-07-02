@@ -98,6 +98,7 @@ class TelegramService:
         self._about_fetcher = about_fetcher or self._default_about_fetcher
         self._client: Any | None = None
         self._phone: str | None = None
+        self._me: Any | None = None
 
     def _default_client_factory(self) -> Any:
         """Crée un vrai client Telethon (import différé pour la testabilité)."""
@@ -128,6 +129,20 @@ class TelegramService:
         """Vrai si une session locale valide existe déjà (FR-005)."""
         client = await self._ensure_client()
         return await client.is_user_authorized()
+
+    async def get_me(self) -> Any:
+        """Retourne le compte connecté (mis en cache), ou ``None`` en cas d'échec.
+
+        Sert notamment à ne jamais tenter de se retirer soi-même d'un groupe.
+        """
+        if self._me is None:
+            client = await self._ensure_client()
+            try:
+                self._me = await client.get_me()
+            except Exception as exc:  # noqa: BLE001 - best-effort, ne bloque pas l'appli
+                logger.warning("get_me indisponible: %s", type(exc).__name__)
+                return None
+        return self._me
 
     async def start_login(self, phone: str) -> None:
         """Envoie le code de connexion au numéro fourni (transition CODE_SENT)."""

@@ -81,6 +81,17 @@ def test_protected_id_never_removed_user_mode():
     assert plan_user_removal(groups, 42, ["@bravo"], filter_) == []
 
 
+def test_connected_account_never_removed():
+    me, other = Member(1, "aiproseo"), Member(2, "other")
+    groups = [_grp("alpha", [me, other]), _grp("bravo", [me, other])]
+    filter_ = RemovalFilter(self_user_id=1)  # compte connecté = id 1
+    # On ne peut pas se retirer soi-même : seul « other » part de bravo.
+    assert {
+        (r.group_identifier, r.user_id) for r in plan_mass_removal(groups, "@alpha", filter_)
+    } == {("@bravo", 2)}
+    assert plan_user_removal(groups, 1, ["@bravo"], filter_) == []
+
+
 # ----- Exclusion des bots ----------------------------------------------------------------
 
 

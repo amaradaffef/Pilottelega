@@ -53,6 +53,7 @@ class RemovalTab(QWidget):
         self._filter = RemovalFilter()
         self._plan: list[Removal] = []
         self._multi_members: dict[int, tuple[str, list[tuple[str, str]]]] = {}
+        self._self_account: str | None = None
 
         layout = QVBoxLayout(self)
 
@@ -60,6 +61,13 @@ class RemovalTab(QWidget):
         self.admin_note.setWordWrap(True)
         self.admin_note.setStyleSheet("color: #ef6c00;")
         layout.addWidget(self.admin_note)
+
+        # Rappel : le compte connecté est exclu des retraits (visible uniquement si connu).
+        self.self_note = QLabel()
+        self.self_note.setWordWrap(True)
+        self.self_note.setStyleSheet("color: #1565c0;")
+        self.self_note.setVisible(False)
+        layout.addWidget(self.self_note)
 
         # Exclure les bots, directement au moment du retrait (piloté/synchronisé globalement).
         self.exclude_bots_check = QCheckBox()
@@ -166,6 +174,19 @@ class RemovalTab(QWidget):
         self.exclude_bots_check.blockSignals(True)
         self.exclude_bots_check.setChecked(value)
         self.exclude_bots_check.blockSignals(False)
+
+    def set_self_account(self, label: str | None) -> None:
+        """Renseigne le compte connecté (exclu des retraits) et affiche le rappel."""
+        self._self_account = label
+        self._refresh_self_note()
+
+    def _refresh_self_note(self) -> None:
+        """Affiche/masque le rappel d'exclusion du compte connecté selon la langue."""
+        if self._self_account:
+            self.self_note.setText(tr("removal.self_excluded", account=self._self_account))
+            self.self_note.setVisible(True)
+        else:
+            self.self_note.setVisible(False)
 
     # ----- Données ------------------------------------------------------------------
 
@@ -346,6 +367,7 @@ class RemovalTab(QWidget):
     def retranslate(self) -> None:
         """Met à jour tous les textes selon la langue courante."""
         self.admin_note.setText("⚠ " + tr("removal.admin_note"))
+        self._refresh_self_note()
         self.exclude_bots_check.setText(tr("main.exclude_bots"))
         self.mode_label.setText(tr("removal.mode"))
         self.mode_combo.setItemText(0, tr("removal.mode_mass"))
