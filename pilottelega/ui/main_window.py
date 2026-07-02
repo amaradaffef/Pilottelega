@@ -37,6 +37,7 @@ from pilottelega.core.removal import RemovalFilter, parse_protected
 from pilottelega.core.telegram_service import TelegramService
 from pilottelega.ui.analysis_tab import AnalysisTab
 from pilottelega.ui.group_tab import GroupTab
+from pilottelega.ui.groups_dialog import GroupsDialog
 from pilottelega.ui.history_tab import HistoryTab
 from pilottelega.ui.removal_tab import RemovalTab
 
@@ -63,6 +64,12 @@ class MainWindow(QMainWindow):
             height = min(height, available.height() - 80)
         self.resize(width, height)
 
+        # Menu en haut : gestion des groupes enregistrés (définis une fois pour toutes).
+        self._saved_groups: list[str] = preferences.load_groups()
+        self.groups_menu = self.menuBar().addMenu("")
+        self.manage_groups_action = self.groups_menu.addAction("")
+        self.manage_groups_action.triggered.connect(self._open_groups_dialog)
+
         central = QWidget()
         layout = QVBoxLayout(central)
 
@@ -84,6 +91,9 @@ class MainWindow(QMainWindow):
         self.links_edit = QPlainTextEdit()
         self.links_edit.setPlaceholderText("@groupe1\nt.me/groupe2\nhttps://t.me/groupe3")
         self.links_edit.setMaximumHeight(120)
+        # Pré-remplit avec les groupes enregistrés (plus besoin de les recoller à chaque fois).
+        if self._saved_groups:
+            self.links_edit.setPlainText("\n".join(self._saved_groups))
         layout.addWidget(self.links_edit)
 
         self.descr_check = QCheckBox()
@@ -179,6 +189,8 @@ class MainWindow(QMainWindow):
     def retranslate(self) -> None:
         """Met à jour tous les textes (fenêtre + onglets) selon la langue courante."""
         self.setWindowTitle(tr("app.title"))
+        self.groups_menu.setTitle(tr("menu.groups"))
+        self.manage_groups_action.setText(tr("menu.manage_groups"))
         self.lang_label.setText(tr("common.language"))
         self.links_label.setText(tr("main.links_label"))
         self.descr_check.setText(tr("main.fetch_descriptions"))
@@ -198,6 +210,14 @@ class MainWindow(QMainWindow):
             widget = self.tabs.widget(index)
             if hasattr(widget, "retranslate"):
                 widget.retranslate()
+
+    def _open_groups_dialog(self) -> None:
+        """Ouvre la popup de gestion des groupes ; enregistre et pré-remplit les liens."""
+        dialog = GroupsDialog(self._saved_groups, self)
+        if dialog.exec():
+            self._saved_groups = dialog.groups()
+            preferences.save_groups(self._saved_groups)
+            self.links_edit.setPlainText("\n".join(self._saved_groups))
 
     def on_language_changed(self) -> None:
         """Applique et mémorise la langue, puis retraduit l'interface."""
@@ -340,6 +360,12 @@ class MainWindow(QMainWindow):
         if not valid:
             self.status.setText(tr("main.no_valid_links"))
             return
+
+        # Mémorise les liens saisis pour les retrouver au prochain lancement.
+        lines = [ln.strip() for ln in self.links_edit.toPlainText().splitlines() if ln.strip()]
+        if lines != self._saved_groups:
+            self._saved_groups = lines
+            preferences.save_groups(lines)
 
         # Identifie le compte connecté (pour ne jamais se retirer soi-même).
         if self._self_user_id is None:

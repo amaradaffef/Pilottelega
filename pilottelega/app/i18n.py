@@ -18,6 +18,18 @@ AVAILABLE_LANGUAGES: dict[str, str] = {
 _TRANSLATIONS: dict[str, dict[str, str]] = {
     "fr": {
         "app.title": "Pilottelega",
+        "menu.groups": "Mes groupes",
+        "menu.manage_groups": "Gérer mes groupes…",
+        "groups_dialog.title": "Mes groupes enregistrés",
+        "groups_dialog.intro": (
+            "Définissez vos groupes une fois pour toutes. Ils seront pré-remplis à chaque "
+            "lancement. Ajoutez un lien, ou collez-en plusieurs d'un coup."
+        ),
+        "groups_dialog.input_placeholder": "@groupe ou https://t.me/groupe",
+        "groups_dialog.add": "Ajouter",
+        "groups_dialog.remove": "Retirer la sélection",
+        "groups_dialog.save": "Enregistrer",
+        "groups_dialog.cancel": "Annuler",
         "common.language": "Langue",
         "common.export_excel": "Exporter en Excel",
         "common.excel_filter": "Fichiers Excel (*.xlsx)",
@@ -150,6 +162,18 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "en": {
         "app.title": "Pilottelega",
+        "menu.groups": "My groups",
+        "menu.manage_groups": "Manage my groups…",
+        "groups_dialog.title": "My saved groups",
+        "groups_dialog.intro": (
+            "Set your groups once. They will be pre-filled on every launch. "
+            "Add a link, or paste several at once."
+        ),
+        "groups_dialog.input_placeholder": "@group or https://t.me/group",
+        "groups_dialog.add": "Add",
+        "groups_dialog.remove": "Remove selected",
+        "groups_dialog.save": "Save",
+        "groups_dialog.cancel": "Cancel",
         "common.language": "Language",
         "common.export_excel": "Export to Excel",
         "common.excel_filter": "Excel files (*.xlsx)",
@@ -268,6 +292,18 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "ru": {
         "app.title": "Pilottelega",
+        "menu.groups": "Мои группы",
+        "menu.manage_groups": "Управлять группами…",
+        "groups_dialog.title": "Мои сохранённые группы",
+        "groups_dialog.intro": (
+            "Задайте группы один раз. Они будут подставляться при каждом запуске. "
+            "Добавьте ссылку или вставьте сразу несколько."
+        ),
+        "groups_dialog.input_placeholder": "@группа или https://t.me/группа",
+        "groups_dialog.add": "Добавить",
+        "groups_dialog.remove": "Удалить выбранное",
+        "groups_dialog.save": "Сохранить",
+        "groups_dialog.cancel": "Отмена",
         "common.language": "Язык",
         "common.export_excel": "Экспорт в Excel",
         "common.excel_filter": "Файлы Excel (*.xlsx)",

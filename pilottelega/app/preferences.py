@@ -67,6 +67,17 @@ def save_exclude_bots(value: bool) -> None:
     _save("exclude_bots", value)
 
 
+def load_groups() -> list[str]:
+    """Retourne la liste des liens de groupes enregistrés (vide si absente)."""
+    raw = _load().get("groups", [])
+    return [str(item) for item in raw] if isinstance(raw, list) else []
+
+
+def save_groups(entries: list[str]) -> None:
+    """Enregistre la liste des liens de groupes (définis une fois pour toutes)."""
+    _save("groups", list(entries))
+
+
 def load_protected_persons() -> list[str]:
     """Retourne la liste des personnes protégées (@pseudos / IDs, telles que saisies)."""
     raw = _load().get("protected_persons", [])
