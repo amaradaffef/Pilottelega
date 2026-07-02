@@ -350,6 +350,9 @@ class TelegramService:
         delay: float = 0.0,
         on_wait: Callable[[int, int, int], None] | None = None,
         max_flood_retries: int = 5,
+        batch_size: int = 0,
+        batch_pause: float = 0.0,
+        on_pause: Callable[[int, int, int], None] | None = None,
     ) -> list[RemovalResult]:
         """Exécute une liste de retraits, en rapportant le résultat de **chacun**.
 
@@ -360,6 +363,10 @@ class TelegramService:
         entre deux retraits, et si Telegram exige une pause (``FloodWaitError``), on **attend
         puis réessaie** le même retrait (jusqu'à ``max_flood_retries`` fois). ``on_wait`` reçoit
         ``(secondes, déjà_traités, total)`` à chaque pause pour informer l'utilisateur.
+
+        Traitement **par lots** : si ``batch_size`` > 0, on marque une pause de ``batch_pause``
+        secondes tous les ``batch_size`` retraits (ex. 25 retraits puis 2 min). ``on_pause``
+        reçoit ``(secondes_restantes, déjà_traités, total)`` chaque seconde pendant la pause.
         """
         client = await self._ensure_client()
         entity_cache: dict[str, Any] = {}
@@ -398,6 +405,16 @@ class TelegramService:
                     break
             if progress is not None:
                 progress(index, total)
-            if delay and index < total:
+            if index >= total:
+                break  # dernier retrait : aucune attente ensuite
+            if batch_size and batch_pause and index % batch_size == 0:
+                # Fin d'un lot : longue pause anti-blocage avec décompte visible.
+                remaining = int(batch_pause)
+                while remaining > 0:
+                    if on_pause is not None:
+                        on_pause(remaining, index, total)
+                    await asyncio.sleep(1)
+                    remaining -= 1
+            elif delay:
                 await asyncio.sleep(delay)
         return results

@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -141,6 +142,26 @@ class RemovalTab(QWidget):
         actions.addWidget(self.execute_btn)
         actions.addStretch()
         layout.addLayout(actions)
+
+        # Traitement par lots (anti-blocage) : N retraits, pause de M minutes, etc.
+        batch_row = QHBoxLayout()
+        self.batch_check = QCheckBox()
+        self.batch_check.setChecked(True)  # activé par défaut pour protéger le compte
+        batch_row.addWidget(self.batch_check)
+        self.batch_size_spin = QSpinBox()
+        self.batch_size_spin.setRange(1, 1000)
+        self.batch_size_spin.setValue(25)
+        batch_row.addWidget(self.batch_size_spin)
+        self.batch_members_label = QLabel()
+        batch_row.addWidget(self.batch_members_label)
+        self.batch_pause_spin = QSpinBox()
+        self.batch_pause_spin.setRange(0, 120)
+        self.batch_pause_spin.setValue(2)
+        batch_row.addWidget(self.batch_pause_spin)
+        self.batch_minutes_label = QLabel()
+        batch_row.addWidget(self.batch_minutes_label)
+        batch_row.addStretch()
+        layout.addLayout(batch_row)
 
         # Tout cocher / décocher + compteur des lignes actuellement cochées.
         select_row = QHBoxLayout()
@@ -364,9 +385,30 @@ class RemovalTab(QWidget):
             # Telegram impose une pause anti-flood : on informe l'utilisateur.
             self.status.setText(tr("removal.flood_wait", seconds=seconds, done=done, total=total))
 
+        def on_pause(remaining: int, done: int, total: int) -> None:
+            # Pause volontaire entre deux lots (anti-blocage) : décompte visible.
+            self.status.setText(
+                tr("removal.batch_pause", remaining=remaining, done=done, total=total)
+            )
+
+        # Mode par lots (anti-blocage) : N retraits puis pause de M minutes.
+        if self.batch_check.isChecked():
+            batch_size = self.batch_size_spin.value()
+            batch_pause = float(self.batch_pause_spin.value() * 60)
+        else:
+            batch_size = 0
+            batch_pause = 0.0
+
         # Petit délai entre retraits pour limiter les blocages anti-flood de Telegram.
         results = await self.service.execute_removals(
-            selected, ban=ban, progress=on_progress, delay=1.0, on_wait=on_wait
+            selected,
+            ban=ban,
+            progress=on_progress,
+            delay=1.0,
+            on_wait=on_wait,
+            batch_size=batch_size,
+            batch_pause=batch_pause,
+            on_pause=on_pause,
         )
 
         # Consigne l'action dans l'historique local (persistant) puis notifie l'onglet dédié.
@@ -408,6 +450,9 @@ class RemovalTab(QWidget):
         self.user_label.setText(tr("removal.user"))
         self.remove_hint.setText(tr("removal.remove_hint"))
         self.ban_check.setText(tr("removal.ban"))
+        self.batch_check.setText(tr("removal.batch_label"))
+        self.batch_members_label.setText(tr("removal.batch_members"))
+        self.batch_minutes_label.setText(tr("removal.batch_minutes"))
         self.preview_btn.setText(tr("removal.preview"))
         self.select_all_check.setText(tr("removal.select_all"))
         self._update_selected_count()

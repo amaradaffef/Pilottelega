@@ -85,9 +85,15 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
             "{count} retrait(s) vont être exécutés sur Telegram. "
             "Action réelle et difficilement réversible. Continuer ?"
         ),
+        "removal.batch_label": "Par lots de",
+        "removal.batch_members": "membres, pause de",
+        "removal.batch_minutes": "min entre les lots",
         "removal.running": "Retrait en cours… {done}/{total}",
         "removal.flood_wait": (
             "Limite Telegram atteinte : attente de {seconds}s… ({done}/{total} traités)"
+        ),
+        "removal.batch_pause": (
+            "Pause entre lots : {remaining}s avant le lot suivant… ({done}/{total} traités)"
         ),
         "removal.done": "Terminé : {ok} réussi(s), {failed} échec(s).",
         "removal.first_error": "Première erreur : {error}",
@@ -201,8 +207,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
             "{count} removal(s) will be executed on Telegram. "
             "Real, hard-to-undo action. Continue?"
         ),
+        "removal.batch_label": "In batches of",
+        "removal.batch_members": "members, pause of",
+        "removal.batch_minutes": "min between batches",
         "removal.running": "Removing… {done}/{total}",
         "removal.flood_wait": ("Telegram limit reached: waiting {seconds}s… ({done}/{total} done)"),
+        "removal.batch_pause": (
+            "Pause between batches: {remaining}s before next batch… ({done}/{total} done)"
+        ),
         "removal.done": "Done: {ok} succeeded, {failed} failed.",
         "removal.first_error": "First error: {error}",
         "removal.admin_note": ("Requires admin 'ban users' rights in the affected groups."),
@@ -309,9 +321,15 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
             "Будет выполнено удалений: {count}. "
             "Реальное и трудно обратимое действие. Продолжить?"
         ),
+        "removal.batch_label": "Партиями по",
+        "removal.batch_members": "участников, пауза",
+        "removal.batch_minutes": "мин между партиями",
         "removal.running": "Удаление… {done}/{total}",
         "removal.flood_wait": (
             "Достигнут лимит Telegram: ожидание {seconds}с… (обработано {done}/{total})"
+        ),
+        "removal.batch_pause": (
+            "Пауза между партиями: {remaining}с до следующей партии… (обработано {done}/{total})"
         ),
         "removal.done": "Готово: успешно {ok}, ошибок {failed}.",
         "removal.first_error": "Первая ошибка: {error}",

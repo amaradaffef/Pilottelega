@@ -144,3 +144,19 @@ async def test_execute_removals_waits_and_retries_on_flood():
     assert results[0].ok is True
     assert waits == [0]  # on a bien patienté une fois
     assert client.kicked == [("@g", 1)]
+
+
+async def test_execute_removals_batches_with_pause():
+    """Après chaque lot de ``batch_size``, une pause est marquée (décompte via on_pause)."""
+    pauses: list[tuple[int, int, int]] = []
+    client = FakeClient()
+    removals = [Removal("@g", "g", i, str(i)) for i in range(3)]
+    await _service(client).execute_removals(
+        removals,
+        batch_size=2,
+        batch_pause=1,  # 1s -> un seul tick de décompte
+        on_pause=lambda r, d, t: pauses.append((r, d, t)),
+    )
+    # Pause après le 2e retrait (frontière de lot), pas après le 3e (dernier).
+    assert pauses == [(1, 2, 3)]
+    assert len(client.kicked) == 3
