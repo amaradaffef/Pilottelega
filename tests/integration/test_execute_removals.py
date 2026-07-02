@@ -86,6 +86,26 @@ async def test_execute_removals_uses_input_peer_with_access_hash():
     assert captured[0].access_hash == 555
 
 
+async def test_execute_removals_prefers_username_resolution():
+    """Si un username existe, on le résout via get_input_entity (access_hash « complet »)."""
+    captured: list[object] = []
+
+    class ResolvingClient(FakeClient):
+        async def get_input_entity(self, handle):
+            captured.append(("resolve", handle))
+            return ("resolved", handle)
+
+        async def kick_participant(self, entity, user):
+            captured.append(("kick", user))
+
+    client = ResolvingClient()
+    results = await _service(client).execute_removals([Removal("@g", "g", 100, "@neo", 555, "neo")])
+    assert results[0].ok
+    # Le username prime sur l'access_hash : on résout '@neo' puis on kicke la référence obtenue.
+    assert ("resolve", "@neo") in captured
+    assert ("kick", ("resolved", "@neo")) in captured
+
+
 async def test_execute_removals_failure_reports_detail():
     """Le message d'erreur réel est conservé dans le résultat (diagnostic utilisateur)."""
     client = FakeClient(fail_for={("@g", 1)})

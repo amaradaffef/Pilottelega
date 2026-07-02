@@ -32,7 +32,10 @@ class Removal:
     user_id: int
     user_label: str
     # Permet à Telethon de résoudre l'utilisateur sans dépendre de son cache de session.
+    # ``username`` est privilégié : il donne un access_hash « complet » (le hash des
+    # participants d'un canal est souvent « min » et rejeté par le bannissement/kick).
     access_hash: int | None = None
+    username: str | None = None
 
 
 @dataclass
@@ -147,7 +150,14 @@ def plan_mass_removal(
         for identifier, label in group_list:
             if identifier != keep_identifier:
                 removals.append(
-                    Removal(identifier, label, user_id, member.label, member.access_hash)
+                    Removal(
+                        identifier,
+                        label,
+                        user_id,
+                        member.label,
+                        member.access_hash,
+                        member.username,
+                    )
                 )
     return removals
 
@@ -178,6 +188,7 @@ def plan_user_removal(
             user_id,
             member.label,
             member.access_hash,
+            member.username,
         )
         for identifier in remove_identifiers
         if identifier in wanted

@@ -274,26 +274,42 @@ class TelegramService:
 
     # ----- Retrait de membres (administration) --------------------------------------
 
-    def _input_user(self, user_id: int, access_hash: int | None) -> Any:
-        """Construit la référence utilisateur pour Telethon.
+    async def _resolve_user(
+        self, user_id: int, access_hash: int | None, username: str | None
+    ) -> Any:
+        """Résout l'utilisateur en une référence acceptée par le bannissement/kick.
 
-        Avec l'``access_hash`` (mémorisé à la récupération), on fabrique un ``InputPeerUser``
-        directement résolu : cela évite l'échec fréquent « Could not find the input entity
-        for PeerUser » quand l'utilisateur n'est pas (ou plus) dans le cache de session.
-        Sans ``access_hash``, on retombe sur le simple ``user_id`` (résolu via le cache).
+        Ordre de préférence :
+
+        1. ``username`` → ``get_input_entity('@name')`` : requête « resolve » qui renvoie un
+           access_hash **complet** (fiable pour toutes les opérations).
+        2. ``access_hash`` mémorisé → ``InputPeerUser`` (fonctionne si le hash n'est pas « min »).
+        3. ``user_id`` seul → résolu via le cache de session Telethon.
+
+        Le hash des participants d'un canal est souvent « min » et provoque
+        ``PARTICIPANT_ID_INVALID`` sur ``EditBannedRequest`` : d'où la priorité au username.
         """
-        if access_hash is None:
-            return user_id
-        from telethon.tl.types import InputPeerUser
+        client = self._client
+        if username:
+            handle = username if username.startswith("@") else f"@{username}"
+            return await client.get_input_entity(handle)
+        if access_hash is not None:
+            from telethon.tl.types import InputPeerUser
 
-        return InputPeerUser(user_id, access_hash)
+            return InputPeerUser(user_id, access_hash)
+        return user_id
 
     async def _remove_one(
-        self, entity: Any, user_id: int, ban: bool, access_hash: int | None = None
+        self,
+        entity: Any,
+        user_id: int,
+        ban: bool,
+        access_hash: int | None = None,
+        username: str | None = None,
     ) -> None:
         """Retire (kick) ou bannit un utilisateur d'un groupe. Lève en cas d'échec."""
         client = self._client
-        user = self._input_user(user_id, access_hash)
+        user = await self._resolve_user(user_id, access_hash, username)
         if ban:
             # view_messages=False => banni (ne peut plus voir/rejoindre).
             await client.edit_permissions(entity, user, view_messages=False)
@@ -322,7 +338,9 @@ class TelegramService:
                 if entity is None:
                     entity = await client.get_entity(removal.group_identifier)
                     entity_cache[removal.group_identifier] = entity
-                await self._remove_one(entity, removal.user_id, ban, removal.access_hash)
+                await self._remove_one(
+                    entity, removal.user_id, ban, removal.access_hash, removal.username
+                )
                 results.append(RemovalResult(removal, ok=True))
             except Exception as exc:  # noqa: BLE001 - un échec ne bloque pas les autres
                 detail = str(exc) or type(exc).__name__
