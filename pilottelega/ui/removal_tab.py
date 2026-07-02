@@ -51,6 +51,8 @@ class RemovalTab(QWidget):
     excludeBotsChanged = Signal(bool)
     # Émis après une exécution : l'historique local a été mis à jour.
     historyChanged = Signal()
+    # Émis après une exécution : identifiants des groupes à re-scanner (liste à jour).
+    groupsRescanRequested = Signal(list)
 
     def __init__(self, service: TelegramService) -> None:
         super().__init__()
@@ -364,6 +366,11 @@ class RemovalTab(QWidget):
         timestamp = datetime.now().isoformat(timespec="seconds")
         history_store.append_records(records_from_results(results, ban, timestamp))
         self.historyChanged.emit()
+
+        # Re-scanne les groupes d'où des membres ont réellement été retirés (liste à jour).
+        rescan = sorted({r.removal.group_identifier for r in results if r.ok})
+        if rescan:
+            self.groupsRescanRequested.emit(rescan)
 
         ok = sum(1 for r in results if r.ok)
         failed = len(results) - ok

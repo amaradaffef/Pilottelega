@@ -149,6 +149,8 @@ class MainWindow(QMainWindow):
         # La case « Exclure les bots » de l'onglet Suppression pilote le réglage global.
         self.removal_tab.excludeBotsChanged.connect(self._on_removal_exclude_bots)
         self.removal_tab.set_exclude_bots(self.exclude_bots_check.isChecked())
+        # Après un retrait, re-scanner les groupes concernés pour afficher la liste à jour.
+        self.removal_tab.groupsRescanRequested.connect(self._rescan_groups)
         self.tabs.addTab(self.removal_tab, tr("main.removal_tab"))
 
         # Onglet Historique : rafraîchi après chaque exécution de retrait.
@@ -335,6 +337,26 @@ class MainWindow(QMainWindow):
         self.status.setText(message)
         self.progress.setVisible(False)
         self.fetch_btn.setEnabled(True)
+
+    @asyncSlot(list)
+    async def _rescan_groups(self, identifiers: list[str]) -> None:
+        """Re-récupère les groupes indiqués (après un retrait) et rafraîchit les vues.
+
+        Permet d'afficher la liste des membres **après** suppression, sans action manuelle.
+        Reprend les options de récupération courantes (descriptions / mode complet).
+        """
+        if not identifiers:
+            return
+        fetch_descriptions = self.descr_check.isChecked()
+        thorough = self.thorough_check.isChecked()
+        self.status.setText(tr("main.rescan_running"))
+        for identifier in identifiers:
+            group = await self.service.fetch_group(
+                identifier, fetch_descriptions=fetch_descriptions, thorough=thorough
+            )
+            self._add_group_tab(group)
+        self._refresh_views()
+        self.status.setText(tr("main.rescan_done", count=len(identifiers)))
 
     def _add_group_tab(self, group: TargetGroup) -> None:
         """Ajoute (ou remplace) l'onglet d'un groupe et mémorise ses données.
