@@ -330,9 +330,22 @@ class MainWindow(QMainWindow):
         self.fetch_btn.setEnabled(True)
 
     def _add_group_tab(self, group: TargetGroup) -> None:
-        """Ajoute (ou remplace) l'onglet d'un groupe et mémorise ses données."""
+        """Ajoute (ou remplace) l'onglet d'un groupe et mémorise ses données.
+
+        Un nouveau scan du même groupe **rafraîchit** son onglet au lieu d'en créer un
+        doublon : on retire tout onglet existant portant le même identifiant avant d'insérer.
+        """
         self.groups = [g for g in self.groups if g.identifier != group.identifier]
         self.groups.append(group)
+        # Retire les onglets déjà présents pour ce groupe (évite les doublons au re-scan).
+        index = 0
+        while index < self.tabs.count():
+            widget = self.tabs.widget(index)
+            if isinstance(widget, GroupTab) and widget.group.identifier == group.identifier:
+                self.tabs.removeTab(index)
+                widget.deleteLater()
+            else:
+                index += 1
         # Insère l'onglet du groupe avant les onglets fixes Analyse/Retirer.
         tab = GroupTab(group, exclude_bots=self.exclude_bots_check.isChecked())
         tab.removeRequested.connect(lambda t=tab: self._remove_group_tab(t))
