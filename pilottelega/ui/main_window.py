@@ -33,7 +33,7 @@ from pilottelega.app.i18n import tr
 from pilottelega.app.logging_conf import get_logger
 from pilottelega.core.link_parser import parse_links
 from pilottelega.core.models import TargetGroup
-from pilottelega.core.removal import RemovalFilter
+from pilottelega.core.removal import RemovalFilter, parse_protected
 from pilottelega.core.telegram_service import TelegramService
 from pilottelega.ui.analysis_tab import AnalysisTab
 from pilottelega.ui.group_tab import GroupTab
@@ -92,10 +92,20 @@ class MainWindow(QMainWindow):
         self.thorough_check = QCheckBox()
         layout.addWidget(self.thorough_check)
 
-        # « Personnes à ne jamais retirer » : on coche des membres récupérés puis « Ajouter ».
+        # « Personnes à ne jamais retirer » : on coche des membres récupérés puis « Ajouter »,
+        # ou on saisit/colle directement une liste de comptes (@pseudos / IDs).
         self._protected_persons: list[str] = preferences.load_protected_persons()
         self.protected_label = QLabel()
         layout.addWidget(self.protected_label)
+        # Saisie manuelle directe d'une liste de comptes à protéger.
+        manual_row = QHBoxLayout()
+        self.protected_input = QLineEdit()
+        self.protected_input.returnPressed.connect(self._on_add_manual_protected)
+        manual_row.addWidget(self.protected_input)
+        self.protected_add_manual_btn = QPushButton()
+        self.protected_add_manual_btn.clicked.connect(self._on_add_manual_protected)
+        manual_row.addWidget(self.protected_add_manual_btn)
+        layout.addLayout(manual_row)
         protected_row = QHBoxLayout()
         # Gauche : filtre + liste cochable des membres + bouton « Ajouter les cochés ».
         picker_col = QVBoxLayout()
@@ -174,6 +184,8 @@ class MainWindow(QMainWindow):
         self.descr_check.setText(tr("main.fetch_descriptions"))
         self.thorough_check.setText(tr("main.thorough"))
         self.protected_label.setText(tr("main.protected_label"))
+        self.protected_input.setPlaceholderText(tr("main.protected_input_placeholder"))
+        self.protected_add_manual_btn.setText(tr("main.protected_add_manual"))
         self.member_search.setPlaceholderText(tr("main.protected_search"))
         self.protected_add_btn.setText(tr("main.protected_add"))
         self.protected_remove_btn.setText(tr("main.protected_remove"))
@@ -255,6 +267,30 @@ class MainWindow(QMainWindow):
             self._save_protected_persons()
         else:
             self._populate_member_picker()  # décoche au moins l'affichage
+
+    def _on_add_manual_protected(self) -> None:
+        """Ajoute à la liste protégée les comptes saisis/collés (@pseudos / IDs / liens).
+
+        Accepte plusieurs comptes séparés par des virgules, espaces ou retours ligne.
+        Chaque compte est normalisé en ``@pseudo`` ou en identifiant numérique.
+        """
+        raw = self.protected_input.text().strip()
+        if not raw:
+            return
+        ids, usernames = parse_protected(raw)
+        tokens = [f"@{name}" for name in sorted(usernames)] + [str(i) for i in sorted(ids)]
+        existing = {p.lower() for p in self._protected_persons}
+        added = False
+        for token in tokens:
+            if token.lower() in existing:
+                continue
+            self._protected_persons.append(token)
+            self.protected_list.addItem(token)
+            existing.add(token.lower())
+            added = True
+        if added:
+            self.protected_input.clear()
+            self._save_protected_persons()
 
     def _on_remove_protected_person(self) -> None:
         """Retire de la liste la personne protégée sélectionnée."""
