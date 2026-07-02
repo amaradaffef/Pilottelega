@@ -328,7 +328,12 @@ class RemovalTab(QWidget):
         results = await self.service.execute_removals(selected, ban=ban, progress=on_progress)
         ok = sum(1 for r in results if r.ok)
         failed = len(results) - ok
-        self.status.setText(tr("removal.done", ok=ok, failed=failed))
+        message = tr("removal.done", ok=ok, failed=failed)
+        if failed:
+            first_error = next((r.error for r in results if not r.ok and r.error), None)
+            if first_error:
+                message += "\n" + tr("removal.first_error", error=first_error)
+        self.status.setText(message)
 
         self.progress.setVisible(False)
         self.preview_btn.setEnabled(True)

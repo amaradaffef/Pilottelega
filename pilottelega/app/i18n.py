@@ -84,6 +84,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "removal.running": "Retrait en cours… {done}/{total}",
         "removal.done": "Terminé : {ok} réussi(s), {failed} échec(s).",
+        "removal.first_error": "Première erreur : {error}",
         "removal.admin_note": (
             "Nécessite les droits admin « exclure des utilisateurs » dans les groupes concernés."
         ),
@@ -176,6 +177,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "removal.running": "Removing… {done}/{total}",
         "removal.done": "Done: {ok} succeeded, {failed} failed.",
+        "removal.first_error": "First error: {error}",
         "removal.admin_note": ("Requires admin 'ban users' rights in the affected groups."),
         "group.member_col": "Member",
         "group.id_col": "ID",
@@ -263,6 +265,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "removal.running": "Удаление… {done}/{total}",
         "removal.done": "Готово: успешно {ok}, ошибок {failed}.",
+        "removal.first_error": "Первая ошибка: {error}",
         "removal.admin_note": (
             "Требуются права администратора «блокировать пользователей» в группах."
         ),

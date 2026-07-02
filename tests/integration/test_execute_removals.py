@@ -66,3 +66,29 @@ async def test_execute_removals_progress_callback():
     removals = [Removal("@g", "g", i, str(i)) for i in range(3)]
     await _service(client).execute_removals(removals, progress=lambda d, t: seen.append((d, t)))
     assert seen == [(1, 3), (2, 3), (3, 3)]
+
+
+async def test_execute_removals_uses_input_peer_with_access_hash():
+    """Avec un access_hash, on passe un InputPeerUser résolu (évite l'échec de résolution)."""
+    from telethon.tl.types import InputPeerUser
+
+    captured: list[object] = []
+
+    class CapturingClient(FakeClient):
+        async def kick_participant(self, entity, user):
+            captured.append(user)
+
+    client = CapturingClient()
+    results = await _service(client).execute_removals([Removal("@g", "g", 100, "x", 555)])
+    assert results[0].ok
+    assert isinstance(captured[0], InputPeerUser)
+    assert captured[0].user_id == 100
+    assert captured[0].access_hash == 555
+
+
+async def test_execute_removals_failure_reports_detail():
+    """Le message d'erreur réel est conservé dans le résultat (diagnostic utilisateur)."""
+    client = FakeClient(fail_for={("@g", 1)})
+    results = await _service(client).execute_removals([Removal("@g", "g", 1, "a")])
+    assert results[0].ok is False
+    assert results[0].error == "droits insuffisants"

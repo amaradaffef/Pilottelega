@@ -180,6 +180,7 @@ class TelegramService:
             is_deleted=bool(getattr(user, "deleted", False)),
             last_seen=format_last_seen(user),
             phone=getattr(user, "phone", None),
+            access_hash=getattr(user, "access_hash", None),
         )
 
     async def _iter_participants(self, client: Any, entity: Any, thorough: bool):
@@ -273,15 +274,32 @@ class TelegramService:
 
     # ----- Retrait de membres (administration) --------------------------------------
 
-    async def _remove_one(self, entity: Any, user_id: int, ban: bool) -> None:
+    def _input_user(self, user_id: int, access_hash: int | None) -> Any:
+        """Construit la référence utilisateur pour Telethon.
+
+        Avec l'``access_hash`` (mémorisé à la récupération), on fabrique un ``InputPeerUser``
+        directement résolu : cela évite l'échec fréquent « Could not find the input entity
+        for PeerUser » quand l'utilisateur n'est pas (ou plus) dans le cache de session.
+        Sans ``access_hash``, on retombe sur le simple ``user_id`` (résolu via le cache).
+        """
+        if access_hash is None:
+            return user_id
+        from telethon.tl.types import InputPeerUser
+
+        return InputPeerUser(user_id, access_hash)
+
+    async def _remove_one(
+        self, entity: Any, user_id: int, ban: bool, access_hash: int | None = None
+    ) -> None:
         """Retire (kick) ou bannit un utilisateur d'un groupe. Lève en cas d'échec."""
         client = self._client
+        user = self._input_user(user_id, access_hash)
         if ban:
             # view_messages=False => banni (ne peut plus voir/rejoindre).
-            await client.edit_permissions(entity, user_id, view_messages=False)
+            await client.edit_permissions(entity, user, view_messages=False)
         else:
             # kick = retire mais autorise un retour ultérieur via lien.
-            await client.kick_participant(entity, user_id)
+            await client.kick_participant(entity, user)
 
     async def execute_removals(
         self,
@@ -304,16 +322,17 @@ class TelegramService:
                 if entity is None:
                     entity = await client.get_entity(removal.group_identifier)
                     entity_cache[removal.group_identifier] = entity
-                await self._remove_one(entity, removal.user_id, ban)
+                await self._remove_one(entity, removal.user_id, ban, removal.access_hash)
                 results.append(RemovalResult(removal, ok=True))
             except Exception as exc:  # noqa: BLE001 - un échec ne bloque pas les autres
+                detail = str(exc) or type(exc).__name__
                 logger.warning(
                     "Retrait échoué (user=%s, group=%s): %s",
                     removal.user_id,
                     removal.group_identifier,
-                    type(exc).__name__,
+                    detail,
                 )
-                results.append(RemovalResult(removal, ok=False, error=type(exc).__name__))
+                results.append(RemovalResult(removal, ok=False, error=detail))
             if progress is not None:
                 progress(index, total)
         return results

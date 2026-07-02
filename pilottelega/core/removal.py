@@ -31,6 +31,8 @@ class Removal:
     group_label: str
     user_id: int
     user_label: str
+    # Permet à Telethon de résoudre l'utilisateur sans dépendre de son cache de session.
+    access_hash: int | None = None
 
 
 @dataclass
@@ -141,9 +143,12 @@ def plan_mass_removal(
             continue
         if keep_identifier not in identifiers:
             continue
+        member = members[user_id]
         for identifier, label in group_list:
             if identifier != keep_identifier:
-                removals.append(Removal(identifier, label, user_id, members[user_id].label))
+                removals.append(
+                    Removal(identifier, label, user_id, member.label, member.access_hash)
+                )
     return removals
 
 
@@ -161,13 +166,19 @@ def plan_user_removal(
     membership, members = _membership(groups)
     if user_id not in members:
         return []
-    if filter_.is_excluded(members[user_id]):
+    member = members[user_id]
+    if filter_.is_excluded(member):
         return []
-    user_label = members[user_id].label
     id_to_label = {gi: label for bucket in membership.values() for gi, label in bucket}
     wanted = {gi for gi, _ in membership[user_id]}  # uniquement ses groupes réels
     return [
-        Removal(identifier, id_to_label.get(identifier, identifier), user_id, user_label)
+        Removal(
+            identifier,
+            id_to_label.get(identifier, identifier),
+            user_id,
+            member.label,
+            member.access_hash,
+        )
         for identifier in remove_identifiers
         if identifier in wanted
     ]
