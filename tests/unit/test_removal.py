@@ -6,6 +6,7 @@ from pilottelega.core.models import AccessStatus, Member, TargetGroup
 from pilottelega.core.removal import (
     RemovalFilter,
     parse_protected,
+    plan_deleted_removal,
     plan_mass_removal,
     plan_user_removal,
 )
@@ -90,6 +91,27 @@ def test_connected_account_never_removed():
         (r.group_identifier, r.user_id) for r in plan_mass_removal(groups, "@alpha", filter_)
     } == {("@bravo", 2)}
     assert plan_user_removal(groups, 1, ["@bravo"], filter_) == []
+
+
+# ----- Comptes supprimés (fantômes) ------------------------------------------------------
+
+
+def test_plan_deleted_removal_targets_only_deleted_of_group():
+    alive = Member(1, "alive")
+    ghost1 = Member(2, "", is_deleted=True)
+    ghost2 = Member(3, "", is_deleted=True)
+    other_ghost = Member(4, "", is_deleted=True)
+    groups = [
+        _grp("chat2", [alive, ghost1, ghost2]),
+        _grp("chat1", [other_ghost]),  # autre groupe : non concerné
+    ]
+    plan = plan_deleted_removal(groups, "@chat2")
+    assert {(r.group_identifier, r.user_id) for r in plan} == {("@chat2", 2), ("@chat2", 3)}
+
+
+def test_plan_deleted_removal_empty_when_no_ghost():
+    groups = [_grp("chat2", [Member(1, "alive")])]
+    assert plan_deleted_removal(groups, "@chat2") == []
 
 
 # ----- Exclusion des bots ----------------------------------------------------------------

@@ -37,6 +37,7 @@ from pilottelega.core.models import TargetGroup
 from pilottelega.core.removal import (
     Removal,
     RemovalFilter,
+    plan_deleted_removal,
     plan_mass_removal,
     plan_user_removal,
 )
@@ -90,6 +91,7 @@ class RemovalTab(QWidget):
         self.mode_combo = QComboBox()
         self.mode_combo.addItem("", "mass")
         self.mode_combo.addItem("", "user")
+        self.mode_combo.addItem("", "deleted")
         self.mode_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         mode_row.addWidget(self.mode_combo)
@@ -128,6 +130,18 @@ class RemovalTab(QWidget):
         self.user_groups_list.setMaximumHeight(140)
         user_layout.addWidget(self.user_groups_list)
         layout.addWidget(self.user_widget)
+
+        # Mode « comptes supprimés » : groupe à nettoyer des comptes fantômes.
+        self.deleted_widget = QWidget()
+        deleted_row = QHBoxLayout(self.deleted_widget)
+        self.deleted_label = QLabel()
+        deleted_row.addWidget(self.deleted_label)
+        self.deleted_combo = QComboBox()
+        self.deleted_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.deleted_combo.setMinimumWidth(280)
+        deleted_row.addWidget(self.deleted_combo)
+        deleted_row.addStretch()
+        layout.addWidget(self.deleted_widget)
 
         # Actions
         actions = QHBoxLayout()
@@ -237,8 +251,10 @@ class RemovalTab(QWidget):
         self._multi_members = self._compute_multi_members()
 
         self.keep_combo.clear()
+        self.deleted_combo.clear()
         for group in groups:
             self.keep_combo.addItem(group.label, group.identifier)
+            self.deleted_combo.addItem(group.label, group.identifier)
 
         self.user_combo.clear()
         for user_id, (label, _groups) in self._multi_members.items():
@@ -268,6 +284,7 @@ class RemovalTab(QWidget):
         mode = self.mode_combo.currentData()
         self.mass_widget.setVisible(mode == "mass")
         self.user_widget.setVisible(mode == "user")
+        self.deleted_widget.setVisible(mode == "deleted")
 
     def _on_user_changed(self) -> None:
         self.user_groups_list.clear()
@@ -289,6 +306,9 @@ class RemovalTab(QWidget):
         if mode == "mass":
             keep = self.keep_combo.currentData()
             self._plan = plan_mass_removal(self.groups, keep, self._filter) if keep else []
+        elif mode == "deleted":
+            target = self.deleted_combo.currentData()
+            self._plan = plan_deleted_removal(self.groups, target, self._filter) if target else []
         else:
             user_id = self.user_combo.currentData()
             remove_identifiers = [
@@ -446,7 +466,9 @@ class RemovalTab(QWidget):
         self.mode_label.setText(tr("removal.mode"))
         self.mode_combo.setItemText(0, tr("removal.mode_mass"))
         self.mode_combo.setItemText(1, tr("removal.mode_user"))
+        self.mode_combo.setItemText(2, tr("removal.mode_deleted"))
         self.keep_label.setText(tr("removal.keep_group"))
+        self.deleted_label.setText(tr("removal.deleted_group"))
         self.user_label.setText(tr("removal.user"))
         self.remove_hint.setText(tr("removal.remove_hint"))
         self.ban_check.setText(tr("removal.ban"))

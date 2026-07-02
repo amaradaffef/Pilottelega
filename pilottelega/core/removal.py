@@ -205,3 +205,39 @@ def plan_user_removal(
         for identifier in remove_identifiers
         if identifier in wanted
     ]
+
+
+def plan_deleted_removal(
+    groups: Iterable[TargetGroup],
+    target_identifier: str,
+    filter_: RemovalFilter | None = None,
+) -> list[Removal]:
+    """Retraits de **tous les comptes supprimés** (fantômes) d'un groupe donné.
+
+    Les comptes supprimés (``is_deleted``) encombrent les groupes sans jamais participer.
+    On ne touche qu'au groupe ``target_identifier``. Les éventuelles personnes protégées
+    (``filter_``) sont ignorées par sécurité (en pratique un compte supprimé n'en est pas).
+    """
+    filter_ = filter_ or RemovalFilter()
+    removals: list[Removal] = []
+    seen: set[int] = set()
+    for group in groups:
+        if group.identifier != target_identifier:
+            continue
+        for member in group.members:
+            if member.user_id in seen:
+                continue
+            seen.add(member.user_id)
+            if not member.is_deleted or filter_.is_excluded(member):
+                continue
+            removals.append(
+                Removal(
+                    group.identifier,
+                    group.label,
+                    member.user_id,
+                    member.label,
+                    member.access_hash,
+                    member.username,
+                )
+            )
+    return removals
