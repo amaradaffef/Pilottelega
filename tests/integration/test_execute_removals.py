@@ -112,3 +112,35 @@ async def test_execute_removals_failure_reports_detail():
     results = await _service(client).execute_removals([Removal("@g", "g", 1, "a")])
     assert results[0].ok is False
     assert results[0].error == "droits insuffisants"
+
+
+class FloodWaitError(Exception):
+    """Imitation de telethon.errors.FloodWaitError (détecté par nom de classe + .seconds)."""
+
+    def __init__(self, seconds: int) -> None:
+        super().__init__(f"A wait of {seconds} seconds is required")
+        self.seconds = seconds
+
+
+async def test_execute_removals_waits_and_retries_on_flood():
+    """Un FloodWait provoque une pause puis une nouvelle tentative (au lieu d'un échec)."""
+    waits: list[int] = []
+
+    class FloodyClient(FakeClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self._first = True
+
+        async def kick_participant(self, entity, user):
+            if self._first:
+                self._first = False
+                raise FloodWaitError(0)  # seconds=0 -> pause immédiate en test
+            self.kicked.append((entity[1], user))
+
+    client = FloodyClient()
+    results = await _service(client).execute_removals(
+        [Removal("@g", "g", 1, "a")], on_wait=lambda s, d, t: waits.append(s)
+    )
+    assert results[0].ok is True
+    assert waits == [0]  # on a bien patienté une fois
+    assert client.kicked == [("@g", 1)]

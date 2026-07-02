@@ -86,6 +86,9 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
             "Action réelle et difficilement réversible. Continuer ?"
         ),
         "removal.running": "Retrait en cours… {done}/{total}",
+        "removal.flood_wait": (
+            "Limite Telegram atteinte : attente de {seconds}s… ({done}/{total} traités)"
+        ),
         "removal.done": "Terminé : {ok} réussi(s), {failed} échec(s).",
         "removal.first_error": "Première erreur : {error}",
         "removal.admin_note": (
@@ -199,6 +202,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
             "Real, hard-to-undo action. Continue?"
         ),
         "removal.running": "Removing… {done}/{total}",
+        "removal.flood_wait": ("Telegram limit reached: waiting {seconds}s… ({done}/{total} done)"),
         "removal.done": "Done: {ok} succeeded, {failed} failed.",
         "removal.first_error": "First error: {error}",
         "removal.admin_note": ("Requires admin 'ban users' rights in the affected groups."),
@@ -306,6 +310,9 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
             "Реальное и трудно обратимое действие. Продолжить?"
         ),
         "removal.running": "Удаление… {done}/{total}",
+        "removal.flood_wait": (
+            "Достигнут лимит Telegram: ожидание {seconds}с… (обработано {done}/{total})"
+        ),
         "removal.done": "Готово: успешно {ok}, ошибок {failed}.",
         "removal.first_error": "Первая ошибка: {error}",
         "removal.admin_note": (

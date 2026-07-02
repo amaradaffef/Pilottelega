@@ -360,7 +360,14 @@ class RemovalTab(QWidget):
             self.progress.setValue(done)
             self.status.setText(tr("removal.running", done=done, total=total))
 
-        results = await self.service.execute_removals(selected, ban=ban, progress=on_progress)
+        def on_wait(seconds: int, done: int, total: int) -> None:
+            # Telegram impose une pause anti-flood : on informe l'utilisateur.
+            self.status.setText(tr("removal.flood_wait", seconds=seconds, done=done, total=total))
+
+        # Petit délai entre retraits pour limiter les blocages anti-flood de Telegram.
+        results = await self.service.execute_removals(
+            selected, ban=ban, progress=on_progress, delay=1.0, on_wait=on_wait
+        )
 
         # Consigne l'action dans l'historique local (persistant) puis notifie l'onglet dédié.
         timestamp = datetime.now().isoformat(timespec="seconds")

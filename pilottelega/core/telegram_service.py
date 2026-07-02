@@ -10,6 +10,7 @@ Principe III : toutes les opérations réseau sont ``async`` (consommées via qa
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import replace
 from enum import StrEnum
@@ -332,40 +333,71 @@ class TelegramService:
             # kick = retire mais autorise un retour ultérieur via lien.
             await client.kick_participant(entity, user)
 
+    @staticmethod
+    def _flood_wait_seconds(exc: Exception) -> int | None:
+        """Secondes d'attente exigées si l'exception est un ``FloodWaitError``, sinon ``None``."""
+        if type(exc).__name__ == "FloodWaitError":
+            seconds = getattr(exc, "seconds", None)
+            if seconds is not None:
+                return int(seconds)
+        return None
+
     async def execute_removals(
         self,
         removals: list[Removal],
         ban: bool = False,
         progress: Callable[[int, int], None] | None = None,
+        delay: float = 0.0,
+        on_wait: Callable[[int, int, int], None] | None = None,
+        max_flood_retries: int = 5,
     ) -> list[RemovalResult]:
         """Exécute une liste de retraits, en rapportant le résultat de **chacun**.
 
-        Un échec sur un retrait (droits manquants, FloodWait, etc.) n'interrompt pas les
-        autres : il est consigné dans le ``RemovalResult`` correspondant.
+        Un échec sur un retrait (droits manquants, etc.) n'interrompt pas les autres : il est
+        consigné dans le ``RemovalResult`` correspondant.
+
+        Anti-flood : Telegram bride les bannissements en masse. On patiente ``delay`` secondes
+        entre deux retraits, et si Telegram exige une pause (``FloodWaitError``), on **attend
+        puis réessaie** le même retrait (jusqu'à ``max_flood_retries`` fois). ``on_wait`` reçoit
+        ``(secondes, déjà_traités, total)`` à chaque pause pour informer l'utilisateur.
         """
         client = await self._ensure_client()
         entity_cache: dict[str, Any] = {}
         results: list[RemovalResult] = []
         total = len(removals)
         for index, removal in enumerate(removals, start=1):
-            try:
-                entity = entity_cache.get(removal.group_identifier)
-                if entity is None:
-                    entity = await client.get_entity(removal.group_identifier)
-                    entity_cache[removal.group_identifier] = entity
-                await self._remove_one(
-                    entity, removal.user_id, ban, removal.access_hash, removal.username
-                )
-                results.append(RemovalResult(removal, ok=True))
-            except Exception as exc:  # noqa: BLE001 - un échec ne bloque pas les autres
-                detail = str(exc) or type(exc).__name__
-                logger.warning(
-                    "Retrait échoué (user=%s, group=%s): %s",
-                    removal.user_id,
-                    removal.group_identifier,
-                    detail,
-                )
-                results.append(RemovalResult(removal, ok=False, error=detail))
+            floods = 0
+            while True:
+                try:
+                    entity = entity_cache.get(removal.group_identifier)
+                    if entity is None:
+                        entity = await client.get_entity(removal.group_identifier)
+                        entity_cache[removal.group_identifier] = entity
+                    await self._remove_one(
+                        entity, removal.user_id, ban, removal.access_hash, removal.username
+                    )
+                    results.append(RemovalResult(removal, ok=True))
+                    break
+                except Exception as exc:  # noqa: BLE001 - un échec ne bloque pas les autres
+                    wait = self._flood_wait_seconds(exc)
+                    if wait is not None and floods < max_flood_retries:
+                        floods += 1
+                        logger.info("FloodWait: pause de %ss avant nouvelle tentative.", wait)
+                        if on_wait is not None:
+                            on_wait(wait, index - 1, total)
+                        await asyncio.sleep(wait)
+                        continue
+                    detail = str(exc) or type(exc).__name__
+                    logger.warning(
+                        "Retrait échoué (user=%s, group=%s): %s",
+                        removal.user_id,
+                        removal.group_identifier,
+                        detail,
+                    )
+                    results.append(RemovalResult(removal, ok=False, error=detail))
+                    break
             if progress is not None:
                 progress(index, total)
+            if delay and index < total:
+                await asyncio.sleep(delay)
         return results
