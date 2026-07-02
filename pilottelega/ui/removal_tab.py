@@ -120,11 +120,17 @@ class RemovalTab(QWidget):
         actions.addStretch()
         layout.addLayout(actions)
 
-        # Tout cocher / décocher (agit sur les lignes de l'aperçu)
+        # Tout cocher / décocher + compteur des lignes actuellement cochées.
+        select_row = QHBoxLayout()
         self.select_all_check = QCheckBox()
         self.select_all_check.setChecked(True)
         self.select_all_check.stateChanged.connect(self._toggle_all)
-        layout.addWidget(self.select_all_check)
+        select_row.addWidget(self.select_all_check)
+        select_row.addStretch()
+        self.selected_count_label = QLabel()
+        self.selected_count_label.setStyleSheet("font-weight: bold;")
+        select_row.addWidget(self.selected_count_label)
+        layout.addLayout(select_row)
 
         # Aperçu (colonne 0 = case à cocher pour inclure/exclure la ligne)
         self.table = QTableWidget(0, 3)
@@ -133,6 +139,8 @@ class RemovalTab(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        # Cocher/décocher une ligne met à jour le compteur en direct.
+        self.table.itemChanged.connect(self._on_table_item_changed)
         layout.addWidget(self.table)
 
         self.progress = QProgressBar()
@@ -238,6 +246,7 @@ class RemovalTab(QWidget):
                 else []
             )
 
+        self.table.blockSignals(True)
         self.table.setRowCount(len(self._plan))
         for row, removal in enumerate(self._plan):
             check = QTableWidgetItem()
@@ -246,10 +255,12 @@ class RemovalTab(QWidget):
             self.table.setItem(row, 0, check)
             self.table.setItem(row, 1, QTableWidgetItem(removal.user_label))
             self.table.setItem(row, 2, QTableWidgetItem(removal.group_label))
+        self.table.blockSignals(False)
 
         self.select_all_check.blockSignals(True)
         self.select_all_check.setChecked(True)
         self.select_all_check.blockSignals(False)
+        self._update_selected_count()
         self.execute_btn.setEnabled(bool(self._plan))
         self.status.setText("" if self._plan else tr("removal.empty"))
 
@@ -258,10 +269,23 @@ class RemovalTab(QWidget):
         state = (
             Qt.CheckState.Checked if self.select_all_check.isChecked() else Qt.CheckState.Unchecked
         )
+        self.table.blockSignals(True)
         for row in range(self.table.rowCount()):
             item = self.table.item(row, 0)
             if item is not None:
                 item.setCheckState(state)
+        self.table.blockSignals(False)
+        self._update_selected_count()
+
+    def _on_table_item_changed(self, item: QTableWidgetItem) -> None:
+        """Une case (colonne 0) a changé : rafraîchit le compteur de sélection."""
+        if item.column() == 0:
+            self._update_selected_count()
+
+    def _update_selected_count(self) -> None:
+        """Affiche combien de lignes sont actuellement cochées (à retirer)."""
+        count = len(self._selected_removals())
+        self.selected_count_label.setText(tr("removal.selected_count", count=count))
 
     def _selected_removals(self) -> list[Removal]:
         """Retraits dont la case est cochée (dans l'ordre du plan)."""
@@ -311,6 +335,7 @@ class RemovalTab(QWidget):
         self.execute_btn.setEnabled(False)
         self._plan = []
         self.table.setRowCount(0)
+        self._update_selected_count()
 
     def retranslate(self) -> None:
         """Met à jour tous les textes selon la langue courante."""
@@ -325,6 +350,7 @@ class RemovalTab(QWidget):
         self.ban_check.setText(tr("removal.ban"))
         self.preview_btn.setText(tr("removal.preview"))
         self.select_all_check.setText(tr("removal.select_all"))
+        self._update_selected_count()
         self.execute_btn.setText(tr("removal.execute"))
         self.table.setHorizontalHeaderLabels(
             ["", tr("removal.col_member"), tr("removal.col_group")]

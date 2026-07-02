@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
@@ -38,6 +39,9 @@ _STATUS_COLORS = {
 class GroupTab(QWidget):
     """Vue d'un ``TargetGroup``."""
 
+    # Émis quand l'utilisateur veut retirer ce groupe de l'interface (pas de Telegram).
+    removeRequested = Signal()
+
     def __init__(self, group: TargetGroup, exclude_bots: bool = False) -> None:
         super().__init__()
         self.group = group
@@ -54,6 +58,11 @@ class GroupTab(QWidget):
         self.export_btn = QPushButton()
         self.export_btn.clicked.connect(self.on_export)
         layout.addWidget(self.export_btn)
+
+        # Retire le groupe de l'application uniquement (permet de le récupérer/ré-analyser).
+        self.remove_btn = QPushButton()
+        self.remove_btn.clicked.connect(lambda: self.removeRequested.emit())
+        layout.addWidget(self.remove_btn)
 
         self.table = QTableWidget(0, len(GROUP_COLUMNS))
         self.table.setHorizontalHeaderLabels(GROUP_COLUMNS)
@@ -102,6 +111,7 @@ class GroupTab(QWidget):
         """Met à jour les textes selon la langue courante."""
         self.badge.setText(self._status_text())
         self.export_btn.setText(tr("common.export_excel"))
+        self.remove_btn.setText(tr("group.remove"))
         # Les en-têtes de colonnes sont des noms de champs techniques (non traduits).
 
     def on_export(self) -> None:

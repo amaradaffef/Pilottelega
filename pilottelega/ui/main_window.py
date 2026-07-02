@@ -321,4 +321,19 @@ class MainWindow(QMainWindow):
         self.groups.append(group)
         # Insère l'onglet du groupe avant les onglets fixes Analyse/Retirer.
         tab = GroupTab(group, exclude_bots=self.exclude_bots_check.isChecked())
+        tab.removeRequested.connect(lambda t=tab: self._remove_group_tab(t))
         self.tabs.insertTab(self.tabs.indexOf(self.analysis_tab), tab, group.label)
+
+    def _remove_group_tab(self, tab: GroupTab) -> None:
+        """Retire un groupe de l'interface uniquement (jamais de Telegram) et recalcule.
+
+        Le groupe disparaît des onglets, de l'analyse et du retrait ; il pourra être
+        récupéré à nouveau via « Récupérer les membres » pour le ré-analyser.
+        """
+        index = self.tabs.indexOf(tab)
+        if index < 0:
+            return
+        self.groups = [g for g in self.groups if g.identifier != tab.group.identifier]
+        self.tabs.removeTab(index)
+        tab.deleteLater()
+        self._refresh_views()
