@@ -8,6 +8,7 @@ Interface traduisible (FR/EN/RU) avec sélecteur de langue.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -47,7 +49,15 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.service = service
         self.groups: list[TargetGroup] = []
-        self.resize(950, 850)
+        # Taille adaptée à l'écran disponible : jamais plus grande que le bureau utile
+        # (sinon le bas de la fenêtre passe sous la barre des tâches — cf. capture utilisateur).
+        screen = QGuiApplication.primaryScreen()
+        available = screen.availableGeometry() if screen else None
+        width, height = 950, 850
+        if available is not None:
+            width = min(width, available.width() - 40)
+            height = min(height, available.height() - 80)
+        self.resize(width, height)
 
         central = QWidget()
         layout = QVBoxLayout(central)
@@ -89,7 +99,7 @@ class MainWindow(QMainWindow):
         self.member_search.textChanged.connect(self._populate_member_picker)
         picker_col.addWidget(self.member_search)
         self.member_picker = QListWidget()
-        self.member_picker.setMinimumHeight(300)
+        self.member_picker.setMinimumHeight(180)
         picker_col.addWidget(self.member_picker)
         self.protected_add_btn = QPushButton()
         self.protected_add_btn.clicked.connect(self._on_add_checked_members)
@@ -98,7 +108,7 @@ class MainWindow(QMainWindow):
         # Droite : liste des personnes exclues + bouton « Retirer la sélection ».
         excluded_col = QVBoxLayout()
         self.protected_list = QListWidget()
-        self.protected_list.setMinimumHeight(300)
+        self.protected_list.setMinimumHeight(180)
         self.protected_list.addItems(self._protected_persons)
         excluded_col.addWidget(self.protected_list)
         self.protected_remove_btn = QPushButton()
@@ -126,6 +136,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.status)
 
         self.tabs = QTabWidget()
+        self.tabs.setMinimumHeight(320)
         layout.addWidget(self.tabs)
 
         self.analysis_tab = AnalysisTab()
@@ -136,7 +147,12 @@ class MainWindow(QMainWindow):
         self.removal_tab.set_exclude_bots(self.exclude_bots_check.isChecked())
         self.tabs.addTab(self.removal_tab, tr("main.removal_tab"))
 
-        self.setCentralWidget(central)
+        # Zone défilable : si le contenu dépasse la hauteur de l'écran, une barre de
+        # défilement apparaît au lieu de rejeter les champs sous la barre des tâches.
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(central)
+        self.setCentralWidget(scroll)
         self.retranslate()
 
     def retranslate(self) -> None:
