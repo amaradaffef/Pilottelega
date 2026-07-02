@@ -330,9 +330,10 @@ class RemovalTab(QWidget):
         failed = len(results) - ok
         message = tr("removal.done", ok=ok, failed=failed)
         if failed:
-            first_error = next((r.error for r in results if not r.ok and r.error), None)
-            if first_error:
-                message += "\n" + tr("removal.first_error", error=first_error)
+            first = next((r for r in results if not r.ok and r.error), None)
+            if first is not None:
+                who = f"{first.removal.user_label} (id {first.removal.user_id})"
+                message += "\n" + tr("removal.first_error", error=f"{who} — {first.error}")
         self.status.setText(message)
 
         self.progress.setVisible(False)
