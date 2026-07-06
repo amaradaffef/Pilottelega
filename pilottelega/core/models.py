@@ -51,6 +51,7 @@ class Member:
     is_premium: bool = False
     is_deleted: bool = False
     last_seen: str | None = None
+    join_date: str | None = None  # date d'adhésion au groupe (supergroupes/canaux)
     phone: str | None = None
     description: str | None = None
     # Nécessaire pour résoudre l'utilisateur côté Telethon lors d'un retrait (kick/ban).

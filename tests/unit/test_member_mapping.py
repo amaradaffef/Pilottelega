@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from pilottelega.core.telegram_service import TelegramService, format_last_seen
+from pilottelega.core.telegram_service import (
+    TelegramService,
+    format_join_date,
+    format_last_seen,
+)
 
 
 class FakeStatusOffline:
@@ -75,3 +79,32 @@ def test_format_last_seen_readable_status():
 
 def test_format_last_seen_none():
     assert format_last_seen(FakeUser(status=None)) is None
+
+
+class FakeParticipant:
+    def __init__(self, date):
+        self.date = date
+
+
+class UserWithParticipant:
+    def __init__(self, participant=None, **kwargs):
+        self.id = kwargs.get("id", 1)
+        self.username = kwargs.get("username")
+        self.first_name = kwargs.get("first_name")
+        self.last_name = kwargs.get("last_name")
+        self.participant = participant
+
+
+def test_format_join_date_from_participant():
+    user = UserWithParticipant(participant=FakeParticipant(FakeDate()))
+    assert format_join_date(user) == "2026-06-01T12:00:00"
+
+
+def test_format_join_date_absent():
+    assert format_join_date(UserWithParticipant(participant=None)) is None
+
+
+def test_to_member_captures_join_date():
+    user = UserWithParticipant(id=5, first_name="Joiner", participant=FakeParticipant(FakeDate()))
+    member = TelegramService._to_member(user)
+    assert member.join_date == "2026-06-01T12:00:00"

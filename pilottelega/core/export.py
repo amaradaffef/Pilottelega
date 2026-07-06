@@ -25,6 +25,7 @@ GROUP_COLUMNS: list[str] = [
     "is_premium",
     "is_deleted",
     "last_seen",
+    "join_date",
     "phone",
     "description",
 ]
@@ -48,6 +49,7 @@ def member_row(member: Member) -> list[object]:
         member.is_premium,
         member.is_deleted,
         member.last_seen or "",
+        member.join_date or "",
         member.phone or "",
         member.description or "",
     ]

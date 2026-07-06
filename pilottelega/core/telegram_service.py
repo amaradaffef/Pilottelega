@@ -57,6 +57,23 @@ def format_last_seen(user: Any) -> str | None:
     return mapping.get(type(status).__name__, type(status).__name__)
 
 
+def format_join_date(user: Any) -> str | None:
+    """Date d'adhésion au groupe (ISO) depuis ``user.participant.date``, sinon ``None``.
+
+    Telethon attache à chaque participant un objet ``participant`` (ChannelParticipant…)
+    dont le champ ``date`` indique quand le compte a rejoint le groupe. Absent pour les
+    petits groupes classiques et parfois pour le créateur/certains admins.
+    """
+    participant = getattr(user, "participant", None)
+    date = getattr(participant, "date", None)
+    if date is None:
+        return None
+    try:
+        return date.isoformat()
+    except AttributeError:
+        return str(date)
+
+
 # Requêtes de recherche pour la récupération « complète » : en combinant une recherche
 # vide + chaque lettre (latin/cyrillique) + chiffres, on remonte bien plus de membres que
 # la pagination par défaut (que Telegram plafonne sur les gros groupes).
@@ -205,6 +222,7 @@ class TelegramService:
             is_premium=bool(getattr(user, "premium", False)),
             is_deleted=bool(getattr(user, "deleted", False)),
             last_seen=format_last_seen(user),
+            join_date=format_join_date(user),
             phone=getattr(user, "phone", None),
             access_hash=getattr(user, "access_hash", None),
         )

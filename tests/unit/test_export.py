@@ -34,6 +34,7 @@ def test_export_group_writes_all_fields(tmp_path):
             last_name="A",
             is_premium=True,
             last_seen="2026-06-01T10:00:00",
+            join_date="2026-05-01T09:00:00",
             phone="+33123456789",
             description="Hello, je suis Alice.",
         ),
@@ -56,10 +57,11 @@ def test_export_group_writes_all_fields(tmp_path):
         "is_premium",
         "is_deleted",
         "last_seen",
+        "join_date",
         "phone",
         "description",
     )
-    # Alice : premium, dernière connexion datée, téléphone et bio.
+    # Alice : premium, dernière connexion datée, date d'adhésion, téléphone et bio.
     assert rows[1] == (
         1,
         "@alice",
@@ -69,11 +71,12 @@ def test_export_group_writes_all_fields(tmp_path):
         True,
         False,
         "2026-06-01T10:00:00",
+        "2026-05-01T09:00:00",
         "+33123456789",
         "Hello, je suis Alice.",
     )
     # Bob : bot, champs absents relus None par openpyxl.
-    assert rows[2] == (2, None, "Botty", None, True, False, False, None, None, None)
+    assert rows[2] == (2, None, "Botty", None, True, False, False, None, None, None, None)
 
 
 def test_filter_members_excludes_bots():
