@@ -7,6 +7,7 @@ from pilottelega.core.removal import (
     RemovalFilter,
     parse_protected,
     plan_deleted_removal,
+    plan_list_removal,
     plan_mass_removal,
     plan_user_removal,
 )
@@ -112,6 +113,37 @@ def test_plan_deleted_removal_targets_only_deleted_of_group():
 def test_plan_deleted_removal_empty_when_no_ghost():
     groups = [_grp("chat2", [Member(1, "alive")])]
     assert plan_deleted_removal(groups, "@chat2") == []
+
+
+# ----- Retrait par liste explicite -------------------------------------------------------
+
+
+def test_plan_list_removal_matches_username_and_id():
+    a = Member(1, "alpha")
+    bot = Member(2, "spambot", is_bot=True)
+    ghost = Member(3, "other")
+    groups = [_grp("chat", [a, bot, ghost])]
+    ids, usernames = parse_protected("@SpamBot, 1")  # par pseudo (casse ignorée) + par id
+    plan = plan_list_removal(groups, "@chat", ids, usernames)
+    # alpha (id 1) et spambot (@spambot) ciblés ; les bots listés SONT retirés.
+    assert {(r.group_identifier, r.user_id) for r in plan} == {("@chat", 1), ("@chat", 2)}
+
+
+def test_plan_list_removal_skips_protected_and_self():
+    keep = Member(1, "keepme")
+    me = Member(2, "myself")
+    groups = [_grp("chat", [keep, me])]
+    ids, usernames = parse_protected("@keepme @myself")
+    filter_ = RemovalFilter(protected_usernames=frozenset({"keepme"}), self_user_id=2)
+    # keepme est protégé, myself est le compte connecté → aucun retrait.
+    assert plan_list_removal(groups, "@chat", ids, usernames, filter_) == []
+
+
+def test_plan_list_removal_ignores_accounts_not_in_group():
+    a = Member(1, "alpha")
+    groups = [_grp("chat", [a])]
+    ids, usernames = parse_protected("@ghost 999")  # absents du groupe
+    assert plan_list_removal(groups, "@chat", ids, usernames) == []
 
 
 # ----- Exclusion des bots ----------------------------------------------------------------

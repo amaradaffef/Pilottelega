@@ -241,3 +241,45 @@ def plan_deleted_removal(
                 )
             )
     return removals
+
+
+def plan_list_removal(
+    groups: Iterable[TargetGroup],
+    target_identifier: str,
+    ids: frozenset[int],
+    usernames: frozenset[str],
+    filter_: RemovalFilter | None = None,
+) -> list[Removal]:
+    """Retraits d'une **liste explicite** de comptes (@pseudos / IDs) d'un groupe donné.
+
+    Pensé pour nettoyer d'un coup une liste connue (ex. des bots) : on retire du groupe
+    ``target_identifier`` tout membre dont l'``user_id`` figure dans ``ids`` ou dont le
+    ``username`` (minuscule) figure dans ``usernames``. Seuls les comptes **protégés** ou
+    le compte connecté sont épargnés — les bots explicitement listés SONT retirés.
+    """
+    filter_ = filter_ or RemovalFilter()
+    removals: list[Removal] = []
+    seen: set[int] = set()
+    for group in groups:
+        if group.identifier != target_identifier:
+            continue
+        for member in group.members:
+            if member.user_id in seen:
+                continue
+            seen.add(member.user_id)
+            matched = member.user_id in ids or (
+                member.username is not None and member.username.lower() in usernames
+            )
+            if not matched or filter_.is_protected(member):
+                continue
+            removals.append(
+                Removal(
+                    group.identifier,
+                    group.label,
+                    member.user_id,
+                    member.label,
+                    member.access_hash,
+                    member.username,
+                )
+            )
+    return removals

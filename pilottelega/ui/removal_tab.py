@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
+    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QSpinBox,
@@ -37,7 +38,9 @@ from pilottelega.core.models import TargetGroup
 from pilottelega.core.removal import (
     Removal,
     RemovalFilter,
+    parse_protected,
     plan_deleted_removal,
+    plan_list_removal,
     plan_mass_removal,
     plan_user_removal,
 )
@@ -92,6 +95,7 @@ class RemovalTab(QWidget):
         self.mode_combo.addItem("", "mass")
         self.mode_combo.addItem("", "user")
         self.mode_combo.addItem("", "deleted")
+        self.mode_combo.addItem("", "list")
         self.mode_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         mode_row.addWidget(self.mode_combo)
@@ -142,6 +146,25 @@ class RemovalTab(QWidget):
         deleted_row.addWidget(self.deleted_combo)
         deleted_row.addStretch()
         layout.addWidget(self.deleted_widget)
+
+        # Mode « par liste » : coller une liste de comptes (bots…) à retirer d'un groupe.
+        self.list_widget = QWidget()
+        list_layout = QVBoxLayout(self.list_widget)
+        list_top = QHBoxLayout()
+        self.list_group_label = QLabel()
+        list_top.addWidget(self.list_group_label)
+        self.list_combo = QComboBox()
+        self.list_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.list_combo.setMinimumWidth(280)
+        list_top.addWidget(self.list_combo)
+        list_top.addStretch()
+        list_layout.addLayout(list_top)
+        self.list_hint = QLabel()
+        list_layout.addWidget(self.list_hint)
+        self.list_input = QPlainTextEdit()
+        self.list_input.setMaximumHeight(120)
+        list_layout.addWidget(self.list_input)
+        layout.addWidget(self.list_widget)
 
         # Actions
         actions = QHBoxLayout()
@@ -252,9 +275,11 @@ class RemovalTab(QWidget):
 
         self.keep_combo.clear()
         self.deleted_combo.clear()
+        self.list_combo.clear()
         for group in groups:
             self.keep_combo.addItem(group.label, group.identifier)
             self.deleted_combo.addItem(group.label, group.identifier)
+            self.list_combo.addItem(group.label, group.identifier)
 
         self.user_combo.clear()
         for user_id, (label, _groups) in self._multi_members.items():
@@ -285,6 +310,7 @@ class RemovalTab(QWidget):
         self.mass_widget.setVisible(mode == "mass")
         self.user_widget.setVisible(mode == "user")
         self.deleted_widget.setVisible(mode == "deleted")
+        self.list_widget.setVisible(mode == "list")
 
     def _on_user_changed(self) -> None:
         self.user_groups_list.clear()
@@ -309,6 +335,14 @@ class RemovalTab(QWidget):
         elif mode == "deleted":
             target = self.deleted_combo.currentData()
             self._plan = plan_deleted_removal(self.groups, target, self._filter) if target else []
+        elif mode == "list":
+            target = self.list_combo.currentData()
+            ids, usernames = parse_protected(self.list_input.toPlainText())
+            self._plan = (
+                plan_list_removal(self.groups, target, ids, usernames, self._filter)
+                if target and (ids or usernames)
+                else []
+            )
         else:
             user_id = self.user_combo.currentData()
             remove_identifiers = [
@@ -467,8 +501,12 @@ class RemovalTab(QWidget):
         self.mode_combo.setItemText(0, tr("removal.mode_mass"))
         self.mode_combo.setItemText(1, tr("removal.mode_user"))
         self.mode_combo.setItemText(2, tr("removal.mode_deleted"))
+        self.mode_combo.setItemText(3, tr("removal.mode_list"))
         self.keep_label.setText(tr("removal.keep_group"))
         self.deleted_label.setText(tr("removal.deleted_group"))
+        self.list_group_label.setText(tr("removal.list_group"))
+        self.list_hint.setText(tr("removal.list_hint"))
+        self.list_input.setPlaceholderText(tr("removal.list_placeholder"))
         self.user_label.setText(tr("removal.user"))
         self.remove_hint.setText(tr("removal.remove_hint"))
         self.ban_check.setText(tr("removal.ban"))
