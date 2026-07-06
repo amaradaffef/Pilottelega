@@ -118,6 +118,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "removal.done": "Terminé : {ok} réussi(s), {failed} échec(s).",
         "removal.first_error": "Première erreur : {error}",
+        "removal.err_no_admin": (
+            "Votre compte n'a pas les droits d'admin « bannir/exclure » dans ce groupe "
+            "(ou y est restreint). Devenez administrateur avec ce droit, puis réessayez."
+        ),
+        "removal.err_participant_invalid": (
+            "Compte non résolu par Telegram (souvent un compte supprimé ou sans @pseudo)."
+        ),
+        "removal.err_not_member": "Ce compte n'est déjà plus membre du groupe.",
         "removal.admin_note": (
             "Nécessite les droits admin « exclure des utilisateurs » dans les groupes concernés."
         ),
@@ -259,6 +267,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "removal.done": "Done: {ok} succeeded, {failed} failed.",
         "removal.first_error": "First error: {error}",
+        "removal.err_no_admin": (
+            "Your account lacks the admin 'ban/remove users' right in this group "
+            "(or is restricted there). Become an admin with that right, then retry."
+        ),
+        "removal.err_participant_invalid": (
+            "Account not resolved by Telegram (often a deleted account or one without @username)."
+        ),
+        "removal.err_not_member": "This account is no longer a member of the group.",
         "removal.admin_note": ("Requires admin 'ban users' rights in the affected groups."),
         "removal.self_excluded": (
             "Your account {account} is excluded from removals (you cannot remove yourself)."
@@ -396,6 +412,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "removal.done": "Готово: успешно {ok}, ошибок {failed}.",
         "removal.first_error": "Первая ошибка: {error}",
+        "removal.err_no_admin": (
+            "У вашего аккаунта нет прав администратора «блокировать/удалять» в этой группе "
+            "(или он там ограничен). Станьте админом с этим правом и повторите."
+        ),
+        "removal.err_participant_invalid": (
+            "Telegram не распознал аккаунт (часто это удалённый аккаунт или без @ника)."
+        ),
+        "removal.err_not_member": "Этот аккаунт уже не состоит в группе.",
         "removal.admin_note": (
             "Требуются права администратора «блокировать пользователей» в группах."
         ),

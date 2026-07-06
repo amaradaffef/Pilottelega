@@ -483,6 +483,9 @@ class RemovalTab(QWidget):
             if first is not None:
                 who = f"{first.removal.user_label} (id {first.removal.user_id})"
                 message += "\n" + tr("removal.first_error", error=f"{who} — {first.error}")
+                hint = self._error_hint(first.error or "")
+                if hint:
+                    message += "\n➜ " + hint
         self.status.setText(message)
 
         self.progress.setVisible(False)
@@ -491,6 +494,18 @@ class RemovalTab(QWidget):
         self._plan = []
         self.table.setRowCount(0)
         self._update_selected_count()
+
+    @staticmethod
+    def _error_hint(error: str) -> str:
+        """Traduit une erreur Telegram technique en conseil compréhensible (ou '')."""
+        low = error.lower()
+        if "write in this chat" in low or "admin" in low or "not enough rights" in low:
+            return tr("removal.err_no_admin")
+        if "participant id is invalid" in low:
+            return tr("removal.err_participant_invalid")
+        if "user_not_participant" in low or "not a participant" in low:
+            return tr("removal.err_not_member")
+        return ""
 
     def retranslate(self) -> None:
         """Met à jour tous les textes selon la langue courante."""
