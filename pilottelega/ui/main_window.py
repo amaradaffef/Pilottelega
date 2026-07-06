@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMainWindow,
+    QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
@@ -28,7 +29,7 @@ from PySide6.QtWidgets import (
 )
 from qasync import asyncSlot
 
-from pilottelega.app import i18n, preferences
+from pilottelega.app import i18n, preferences, settings
 from pilottelega.app.i18n import tr
 from pilottelega.app.logging_conf import get_logger
 from pilottelega.core.link_parser import parse_links
@@ -69,6 +70,10 @@ class MainWindow(QMainWindow):
         self.groups_menu = self.menuBar().addMenu("")
         self.manage_groups_action = self.groups_menu.addAction("")
         self.manage_groups_action.triggered.connect(self._open_groups_dialog)
+        # Menu Compte : changer de clés d'accès (efface clés + session locales).
+        self.account_menu = self.menuBar().addMenu("")
+        self.reset_credentials_action = self.account_menu.addAction("")
+        self.reset_credentials_action.triggered.connect(self._on_reset_credentials)
 
         central = QWidget()
         layout = QVBoxLayout(central)
@@ -191,6 +196,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(tr("app.title"))
         self.groups_menu.setTitle(tr("menu.groups"))
         self.manage_groups_action.setText(tr("menu.manage_groups"))
+        self.account_menu.setTitle(tr("menu.account"))
+        self.reset_credentials_action.setText(tr("menu.reset_credentials"))
         self.lang_label.setText(tr("common.language"))
         self.links_label.setText(tr("main.links_label"))
         self.descr_check.setText(tr("main.fetch_descriptions"))
@@ -218,6 +225,17 @@ class MainWindow(QMainWindow):
             self._saved_groups = dialog.groups()
             preferences.save_groups(self._saved_groups)
             self.links_edit.setPlainText("\n".join(self._saved_groups))
+
+    @asyncSlot()
+    async def _on_reset_credentials(self) -> None:
+        """Efface les clés d'accès + la session locales, puis ferme l'app pour re-onboarding."""
+        confirm = QMessageBox.question(self, tr("reset.title"), tr("reset.body"))
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+        await self.service.disconnect()  # libère le fichier de session avant suppression
+        settings.reset_credentials()
+        QMessageBox.information(self, tr("reset.title"), tr("reset.done"))
+        self.close()
 
     def on_language_changed(self) -> None:
         """Applique et mémorise la langue, puis retraduit l'interface."""

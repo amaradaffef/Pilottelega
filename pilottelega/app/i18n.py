@@ -20,6 +20,18 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "app.title": "Pilottelega",
         "menu.groups": "Mes groupes",
         "menu.manage_groups": "Gérer mes groupes…",
+        "menu.account": "Compte",
+        "menu.reset_credentials": "Changer de clés d'accès…",
+        "reset.title": "Changer de clés d'accès",
+        "reset.body": (
+            "Effacer les clés d'accès et la session actuelles ? "
+            "Vous devrez saisir vos nouvelles clés au prochain lancement. "
+            "(Vos groupes, liste protégée et historique sont conservés.)"
+        ),
+        "reset.done": (
+            "Clés et session effacées. L'application va se fermer : relancez-la pour "
+            "saisir vos nouvelles clés."
+        ),
         "groups_dialog.title": "Mes groupes enregistrés",
         "groups_dialog.intro": (
             "Définissez vos groupes une fois pour toutes. Ils seront pré-remplis à chaque "
@@ -176,6 +188,17 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "app.title": "Pilottelega",
         "menu.groups": "My groups",
         "menu.manage_groups": "Manage my groups…",
+        "menu.account": "Account",
+        "menu.reset_credentials": "Change access keys…",
+        "reset.title": "Change access keys",
+        "reset.body": (
+            "Erase the current access keys and session? "
+            "You will enter your new keys on next launch. "
+            "(Your groups, protected list and history are kept.)"
+        ),
+        "reset.done": (
+            "Keys and session erased. The app will close: relaunch it to enter your new keys."
+        ),
         "groups_dialog.title": "My saved groups",
         "groups_dialog.intro": (
             "Set your groups once. They will be pre-filled on every launch. "
@@ -318,6 +341,18 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "app.title": "Pilottelega",
         "menu.groups": "Мои группы",
         "menu.manage_groups": "Управлять группами…",
+        "menu.account": "Аккаунт",
+        "menu.reset_credentials": "Сменить ключи доступа…",
+        "reset.title": "Сменить ключи доступа",
+        "reset.body": (
+            "Стереть текущие ключи доступа и сессию? "
+            "При следующем запуске нужно будет ввести новые ключи. "
+            "(Ваши группы, защищённый список и история сохранятся.)"
+        ),
+        "reset.done": (
+            "Ключи и сессия стёрты. Приложение закроется — запустите его снова, "
+            "чтобы ввести новые ключи."
+        ),
         "groups_dialog.title": "Мои сохранённые группы",
         "groups_dialog.intro": (
             "Задайте группы один раз. Они будут подставляться при каждом запуске. "

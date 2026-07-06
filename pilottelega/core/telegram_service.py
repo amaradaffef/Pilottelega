@@ -124,6 +124,16 @@ class TelegramService:
             await self._client.connect()
         return self._client
 
+    async def disconnect(self) -> None:
+        """Déconnecte le client et libère le fichier de session (pour pouvoir l'effacer)."""
+        if self._client is not None:
+            try:
+                await self._client.disconnect()
+            except Exception as exc:  # noqa: BLE001 - déconnexion best-effort
+                logger.warning("Déconnexion: %s", type(exc).__name__)
+            self._client = None
+            self._me = None
+
     # ----- Cycle de connexion (US1 / FR-001..005) -----------------------------------
 
     async def is_authorized(self) -> bool:

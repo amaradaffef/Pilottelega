@@ -53,3 +53,27 @@ def save_config(config: AppConfig, path: Path | None = None) -> None:
     cfg_path.parent.mkdir(parents=True, exist_ok=True)
     cfg_path.write_text(json.dumps(asdict(config), ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("Configuration locale enregistrée.")
+
+
+def reset_credentials() -> None:
+    """Efface les clés d'accès **et** la session Telegram locales (déconnexion totale).
+
+    Supprime ``config.json`` et le fichier de session Telethon (+ ses fichiers annexes
+    ``-journal``/``-wal``/``-shm``). Le client doit être déconnecté au préalable, sinon
+    Windows peut verrouiller le fichier de session. Les autres préférences (groupes,
+    liste protégée, historique) sont conservées.
+    """
+    session = paths.session_path()
+    targets = [
+        paths.config_path(),
+        session,
+        session.with_name(session.name + "-journal"),
+        session.with_name(session.name + "-wal"),
+        session.with_name(session.name + "-shm"),
+    ]
+    for target in targets:
+        try:
+            target.unlink(missing_ok=True)
+        except OSError as exc:
+            logger.warning("Suppression impossible (%s): %s", target.name, type(exc).__name__)
+    logger.info("Clés d'accès et session locales effacées.")
