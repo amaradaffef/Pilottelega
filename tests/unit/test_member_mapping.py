@@ -96,8 +96,18 @@ class UserWithParticipant:
 
 
 def test_format_join_date_from_participant():
+    # Seule la date est conservée (sans l'heure ni le fuseau).
     user = UserWithParticipant(participant=FakeParticipant(FakeDate()))
-    assert format_join_date(user) == "2026-06-01T12:00:00"
+    assert format_join_date(user) == "2026-06-01"
+
+
+def test_format_join_date_with_timezone():
+    class WithTz:
+        def isoformat(self):
+            return "2026-07-06T10:19:20+00:00"
+
+    user = UserWithParticipant(participant=FakeParticipant(WithTz()))
+    assert format_join_date(user) == "2026-07-06"
 
 
 def test_format_join_date_absent():
@@ -107,4 +117,4 @@ def test_format_join_date_absent():
 def test_to_member_captures_join_date():
     user = UserWithParticipant(id=5, first_name="Joiner", participant=FakeParticipant(FakeDate()))
     member = TelegramService._to_member(user)
-    assert member.join_date == "2026-06-01T12:00:00"
+    assert member.join_date == "2026-06-01"

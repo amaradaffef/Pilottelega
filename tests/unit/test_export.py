@@ -34,7 +34,7 @@ def test_export_group_writes_all_fields(tmp_path):
             last_name="A",
             is_premium=True,
             last_seen="2026-06-01T10:00:00",
-            join_date="2026-05-01T09:00:00",
+            join_date="2026-05-01",
             phone="+33123456789",
             description="Hello, je suis Alice.",
         ),
@@ -71,7 +71,7 @@ def test_export_group_writes_all_fields(tmp_path):
         True,
         False,
         "2026-06-01T10:00:00",
-        "2026-05-01T09:00:00",
+        "2026-05-01",
         "+33123456789",
         "Hello, je suis Alice.",
     )

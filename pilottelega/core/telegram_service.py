@@ -68,10 +68,9 @@ def format_join_date(user: Any) -> str | None:
     date = getattr(participant, "date", None)
     if date is None:
         return None
-    try:
-        return date.isoformat()
-    except AttributeError:
-        return str(date)
+    text = date.isoformat() if hasattr(date, "isoformat") else str(date)
+    # On ne garde que la date (AAAA-MM-JJ), sans l'heure ni le fuseau horaire.
+    return text.split("T", 1)[0]
 
 
 # Requêtes de recherche pour la récupération « complète » : en combinant une recherche
