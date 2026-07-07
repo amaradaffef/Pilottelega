@@ -41,6 +41,7 @@ from pilottelega.ui.group_tab import GroupTab
 from pilottelega.ui.groups_dialog import GroupsDialog
 from pilottelega.ui.history_tab import HistoryTab
 from pilottelega.ui.removal_tab import RemovalTab
+from pilottelega.ui.username_check_tab import UsernameCheckTab
 
 logger = get_logger(__name__)
 
@@ -183,6 +184,10 @@ class MainWindow(QMainWindow):
         self.removal_tab.historyChanged.connect(self.history_tab.reload)
         self.tabs.addTab(self.history_tab, tr("main.history_tab"))
 
+        # Onglet Vérification de comptes par @username.
+        self.username_tab = UsernameCheckTab(service)
+        self.tabs.addTab(self.username_tab, tr("main.username_tab"))
+
         # Zone défilable : si le contenu dépasse la hauteur de l'écran, une barre de
         # défilement apparaît au lieu de rejeter les champs sous la barre des tâches.
         scroll = QScrollArea()
@@ -213,6 +218,7 @@ class MainWindow(QMainWindow):
         self.tabs.setTabText(self.tabs.indexOf(self.analysis_tab), tr("main.analysis_tab"))
         self.tabs.setTabText(self.tabs.indexOf(self.removal_tab), tr("main.removal_tab"))
         self.tabs.setTabText(self.tabs.indexOf(self.history_tab), tr("main.history_tab"))
+        self.tabs.setTabText(self.tabs.indexOf(self.username_tab), tr("main.username_tab"))
         for index in range(self.tabs.count()):
             widget = self.tabs.widget(index)
             if hasattr(widget, "retranslate"):

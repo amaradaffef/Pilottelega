@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -28,6 +28,42 @@ class LoginStep(StrEnum):
 
     CONNECTED = "connected"
     PASSWORD_REQUIRED = "password_required"
+
+
+@dataclass
+class UsernameCheck:
+    """Résultat de la vérification d'un ``@username`` (existence, type, état)."""
+
+    username: str  # jeton saisi, normalisé en « @nom »
+    found: bool
+    kind: str = ""  # user | bot | channel | group | unknown
+    deleted: bool = False
+    name: str = ""
+    entity_id: int | None = None
+    error: str | None = None
+
+
+def classify_entity(entity: Any) -> tuple[str, bool, str, int | None]:
+    """Classe une entité résolue en ``(kind, deleted, name, id)`` sans importer Telethon.
+
+    ``kind`` : ``user`` / ``bot`` / ``channel`` / ``group`` / ``unknown``. La détection se
+    fait par nom de classe et attributs, pour rester testable avec des objets de remplacement.
+    """
+    cls = type(entity).__name__
+    entity_id = getattr(entity, "id", None)
+    if cls == "User":
+        deleted = bool(getattr(entity, "deleted", False))
+        kind = "bot" if getattr(entity, "bot", False) else "user"
+        first = getattr(entity, "first_name", None) or ""
+        last = getattr(entity, "last_name", None) or ""
+        return kind, deleted, f"{first} {last}".strip(), entity_id
+    if cls in ("Channel", "ChannelForbidden"):
+        kind = "group" if getattr(entity, "megagroup", False) else "channel"
+        return kind, False, getattr(entity, "title", "") or "", entity_id
+    if cls in ("Chat", "ChatForbidden"):
+        return "group", False, getattr(entity, "title", "") or "", entity_id
+    name = getattr(entity, "title", "") or getattr(entity, "first_name", "") or ""
+    return "unknown", False, name, entity_id
 
 
 def format_last_seen(user: Any) -> str | None:
@@ -443,5 +479,55 @@ class TelegramService:
                     await asyncio.sleep(1)
                     remaining -= 1
             elif delay:
+                await asyncio.sleep(delay)
+        return results
+
+    async def check_usernames(
+        self,
+        usernames: list[str],
+        progress: Callable[[int, int], None] | None = None,
+        delay: float = 0.0,
+        on_wait: Callable[[int, int, int], None] | None = None,
+        max_flood_retries: int = 5,
+    ) -> list[UsernameCheck]:
+        """Vérifie une liste de ``@username`` : existence, type, compte supprimé.
+
+        Chaque nom est résolu (1 requête réseau). « Non occupé/invalide » → introuvable.
+        Anti-flood identique aux retraits : ``delay`` entre deux vérifications, et attente +
+        nouvelle tentative sur ``FloodWaitError`` (``on_wait`` informe l'utilisateur).
+        """
+        client = await self._ensure_client()
+        results: list[UsernameCheck] = []
+        total = len(usernames)
+        for index, raw in enumerate(usernames, start=1):
+            handle = raw if raw.startswith("@") else f"@{raw}"
+            floods = 0
+            while True:
+                try:
+                    entity = await client.get_entity(handle)
+                    kind, deleted, name, eid = classify_entity(entity)
+                    results.append(UsernameCheck(handle, True, kind, deleted, name, eid))
+                    break
+                except Exception as exc:  # noqa: BLE001 - un échec ne bloque pas les autres
+                    wait = self._flood_wait_seconds(exc)
+                    if wait is not None and floods < max_flood_retries:
+                        floods += 1
+                        if on_wait is not None:
+                            on_wait(wait, index - 1, total)
+                        await asyncio.sleep(wait)
+                        continue
+                    cls = type(exc).__name__
+                    if (
+                        "UsernameNotOccupied" in cls
+                        or "UsernameInvalid" in cls
+                        or isinstance(exc, ValueError)
+                    ):
+                        results.append(UsernameCheck(handle, False))  # introuvable
+                    else:
+                        results.append(UsernameCheck(handle, False, error=str(exc) or cls))
+                    break
+            if progress is not None:
+                progress(index, total)
+            if delay and index < total:
                 await asyncio.sleep(delay)
         return results
