@@ -11,8 +11,10 @@ import re
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QFileDialog,
     QHeaderView,
     QLabel,
+    QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
@@ -24,7 +26,11 @@ from PySide6.QtWidgets import (
 from qasync import asyncSlot
 
 from pilottelega.app.i18n import tr
+from pilottelega.app.logging_conf import get_logger
+from pilottelega.core.export import export_rows_to_xlsx
 from pilottelega.core.telegram_service import TelegramService, UsernameCheck
+
+logger = get_logger(__name__)
 
 # Séparateurs acceptés dans la saisie (virgule, point-virgule, espaces, sauts de ligne).
 _SPLIT = re.compile(r"[\s,;]+")
@@ -39,6 +45,7 @@ class UsernameCheckTab(QWidget):
     def __init__(self, service: TelegramService) -> None:
         super().__init__()
         self.service = service
+        self._results: list[UsernameCheck] = []
         layout = QVBoxLayout(self)
 
         self.hint = QLabel()
@@ -52,6 +59,11 @@ class UsernameCheckTab(QWidget):
         self.check_btn = QPushButton()
         self.check_btn.clicked.connect(self.on_check)
         layout.addWidget(self.check_btn)
+
+        self.export_btn = QPushButton()
+        self.export_btn.clicked.connect(self.on_export)
+        self.export_btn.setEnabled(False)  # activé quand il y a des résultats
+        layout.addWidget(self.export_btn)
 
         self.progress = QProgressBar()
         self.progress.setVisible(False)
@@ -95,39 +107,69 @@ class UsernameCheckTab(QWidget):
         results = await self.service.check_usernames(
             tokens, progress=on_progress, delay=0.5, on_wait=on_wait
         )
+        self._results = results
         self._fill(results)
 
         found = sum(1 for r in results if r.found)
         self.status.setText(tr("username.done", found=found, missing=len(results) - found))
         self.progress.setVisible(False)
         self.check_btn.setEnabled(True)
+        self.export_btn.setEnabled(bool(results))
+
+    @staticmethod
+    def _row_values(res: UsernameCheck) -> list[str]:
+        """Valeurs texte (traduites) d'une ligne, pour la table et l'export."""
+        status = tr("username.found") if res.found else tr("username.not_found")
+        if res.error:
+            status = res.error
+        kind = tr(f"username.kind_{res.kind}") if res.found and res.kind else ""
+        deleted = tr("common.yes") if res.deleted else ""
+        return [res.username, status, kind, deleted, res.name]
 
     def _fill(self, results: list[UsernameCheck]) -> None:
         self.table.setRowCount(len(results))
         for row, res in enumerate(results):
-            status = tr("username.found") if res.found else tr("username.not_found")
-            if res.error:
-                status = res.error
-            kind = tr(f"username.kind_{res.kind}") if res.found and res.kind else ""
-            deleted = tr("common.yes") if res.deleted else ""
-            values = [res.username, status, kind, deleted, res.name]
-            for col, value in enumerate(values):
+            for col, value in enumerate(self._row_values(res)):
                 item = QTableWidgetItem(value)
                 if col == 1:
                     item.setForeground(QColor(_FOUND_COLOR if res.found else _MISSING_COLOR))
                 self.table.setItem(row, col, item)
+
+    def _headers(self) -> list[str]:
+        return [
+            tr("username.col_username"),
+            tr("username.col_status"),
+            tr("username.col_type"),
+            tr("username.col_deleted"),
+            tr("username.col_name"),
+        ]
+
+    def on_export(self) -> None:
+        """Exporte les résultats de vérification vers un fichier Excel."""
+        if not self._results:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, tr("common.export_excel"), "verification.xlsx", tr("common.excel_filter")
+        )
+        if not path:
+            return
+        try:
+            export_rows_to_xlsx(
+                self._headers(),
+                [self._row_values(res) for res in self._results],
+                path,
+                tr("main.username_tab"),
+            )
+        except Exception as exc:  # noqa: BLE001 - retour utilisateur clair
+            logger.warning("Échec export vérification: %s", type(exc).__name__)
+            QMessageBox.warning(self, tr("app.title"), tr("export.failed", error=str(exc)))
+            return
+        QMessageBox.information(self, tr("app.title"), tr("export.done", path=path))
 
     def retranslate(self) -> None:
         """Met à jour les textes selon la langue courante."""
         self.hint.setText(tr("username.hint"))
         self.input.setPlaceholderText(tr("username.placeholder"))
         self.check_btn.setText(tr("username.check"))
-        self.table.setHorizontalHeaderLabels(
-            [
-                tr("username.col_username"),
-                tr("username.col_status"),
-                tr("username.col_type"),
-                tr("username.col_deleted"),
-                tr("username.col_name"),
-            ]
-        )
+        self.export_btn.setText(tr("common.export_excel"))
+        self.table.setHorizontalHeaderLabels(self._headers())

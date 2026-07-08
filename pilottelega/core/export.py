@@ -59,6 +59,22 @@ def _sheet_name(name: str) -> str:
     return name[:_MAX_SHEET_NAME]
 
 
+def export_rows_to_xlsx(
+    headers: list[str],
+    rows: Iterable[list[object]],
+    path: str,
+    sheet_title: str = "Sheet1",
+) -> None:
+    """Écrit une table simple (en-têtes + lignes) dans un ``.xlsx`` (générique, réutilisable)."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = _sheet_name(sheet_title)
+    ws.append(list(headers))
+    for row in rows:
+        ws.append(list(row))
+    wb.save(path)
+
+
 def export_group_to_xlsx(
     group: TargetGroup,
     path: str,

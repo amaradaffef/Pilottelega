@@ -79,6 +79,24 @@ def test_export_group_writes_all_fields(tmp_path):
     assert rows[2] == (2, None, "Botty", None, True, False, False, None, None, None, None)
 
 
+def test_export_rows_to_xlsx_writes_headers_and_rows(tmp_path):
+    from openpyxl import load_workbook
+
+    from pilottelega.core.export import export_rows_to_xlsx
+
+    path = tmp_path / "rows.xlsx"
+    export_rows_to_xlsx(
+        ["Compte", "Statut"],
+        [["@ann", "Trouvé"], ["@ghost", "Introuvable"]],
+        str(path),
+        "Verif",
+    )
+    rows = list(load_workbook(path).active.iter_rows(values_only=True))
+    assert rows[0] == ("Compte", "Statut")
+    assert rows[1] == ("@ann", "Trouvé")
+    assert rows[2] == ("@ghost", "Introuvable")
+
+
 def test_filter_members_excludes_bots():
     human = Member(1, "human")
     bot = Member(2, "bot", is_bot=True)
