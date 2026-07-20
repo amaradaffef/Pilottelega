@@ -27,6 +27,7 @@ def main() -> int:
     from qasync import QEventLoop
 
     from pilottelega.core.telegram_service import TelegramService
+    from pilottelega.ui import theme
     from pilottelega.ui.main_window import MainWindow
     from pilottelega.ui.onboarding import OnboardingDialog
 
@@ -34,6 +35,8 @@ def main() -> int:
     i18n.set_language(preferences.load_language())
 
     app = QApplication(sys.argv)
+    # Thème global (clair/sombre) selon la préférence enregistrée.
+    theme.apply_theme(app, preferences.load_dark_mode())
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 

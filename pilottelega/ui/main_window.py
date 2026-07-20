@@ -10,6 +10,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QHBoxLayout,
@@ -41,6 +42,7 @@ from pilottelega.ui.group_tab import GroupTab
 from pilottelega.ui.groups_dialog import GroupsDialog
 from pilottelega.ui.history_tab import HistoryTab
 from pilottelega.ui.removal_tab import RemovalTab
+from pilottelega.ui.theme import apply_theme
 from pilottelega.ui.username_check_tab import UsernameCheckTab
 
 logger = get_logger(__name__)
@@ -77,11 +79,16 @@ class MainWindow(QMainWindow):
         self.reset_credentials_action.triggered.connect(self._on_reset_credentials)
 
         central = QWidget()
+        central.setObjectName("central")
         layout = QVBoxLayout(central)
 
-        # Barre supérieure : sélecteur de langue
+        # Barre supérieure : bascule thème sombre + sélecteur de langue
         top_row = QHBoxLayout()
         top_row.addStretch()
+        self.dark_check = QCheckBox()
+        self.dark_check.setChecked(preferences.load_dark_mode())
+        self.dark_check.stateChanged.connect(self.on_dark_toggled)
+        top_row.addWidget(self.dark_check)
         self.lang_label = QLabel()
         top_row.addWidget(self.lang_label)
         self.lang_combo = QComboBox()
@@ -154,6 +161,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.exclude_bots_check)
 
         self.fetch_btn = QPushButton()
+        self.fetch_btn.setObjectName("primary")  # action principale accentuée
         self.fetch_btn.clicked.connect(self.on_fetch)
         layout.addWidget(self.fetch_btn)
 
@@ -203,6 +211,7 @@ class MainWindow(QMainWindow):
         self.manage_groups_action.setText(tr("menu.manage_groups"))
         self.account_menu.setTitle(tr("menu.account"))
         self.reset_credentials_action.setText(tr("menu.reset_credentials"))
+        self.dark_check.setText(tr("common.dark_mode"))
         self.lang_label.setText(tr("common.language"))
         self.links_label.setText(tr("main.links_label"))
         self.descr_check.setText(tr("main.fetch_descriptions"))
@@ -242,6 +251,12 @@ class MainWindow(QMainWindow):
         settings.reset_credentials()
         QMessageBox.information(self, tr("reset.title"), tr("reset.done"))
         self.close()
+
+    def on_dark_toggled(self) -> None:
+        """Applique et mémorise le thème clair/sombre."""
+        dark = self.dark_check.isChecked()
+        preferences.save_dark_mode(dark)
+        apply_theme(QApplication.instance(), dark)
 
     def on_language_changed(self) -> None:
         """Applique et mémorise la langue, puis retraduit l'interface."""

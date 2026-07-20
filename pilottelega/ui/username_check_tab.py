@@ -57,6 +57,7 @@ class UsernameCheckTab(QWidget):
         layout.addWidget(self.input)
 
         self.check_btn = QPushButton()
+        self.check_btn.setObjectName("primary")
         self.check_btn.clicked.connect(self.on_check)
         layout.addWidget(self.check_btn)
 

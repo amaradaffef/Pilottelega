@@ -67,6 +67,16 @@ def save_exclude_bots(value: bool) -> None:
     _save("exclude_bots", value)
 
 
+def load_dark_mode() -> bool:
+    """Retourne la préférence de thème sombre (désactivé par défaut)."""
+    return bool(_load().get("dark_mode", False))
+
+
+def save_dark_mode(value: bool) -> None:
+    """Enregistre la préférence de thème sombre."""
+    _save("dark_mode", value)
+
+
 def load_groups() -> list[str]:
     """Retourne la liste des liens de groupes enregistrés (vide si absente)."""
     raw = _load().get("groups", [])

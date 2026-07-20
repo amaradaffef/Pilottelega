@@ -174,6 +174,7 @@ class RemovalTab(QWidget):
         self.preview_btn.clicked.connect(self.on_preview)
         actions.addWidget(self.preview_btn)
         self.execute_btn = QPushButton()
+        self.execute_btn.setObjectName("danger")  # action destructive
         self.execute_btn.clicked.connect(self.on_execute)
         self.execute_btn.setEnabled(False)
         actions.addWidget(self.execute_btn)

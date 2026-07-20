@@ -43,6 +43,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "groups_dialog.save": "Enregistrer",
         "groups_dialog.cancel": "Annuler",
         "common.language": "Langue",
+        "common.dark_mode": "Mode sombre",
         "common.export_excel": "Exporter en Excel",
         "common.excel_filter": "Fichiers Excel (*.xlsx)",
         # Onboarding
@@ -236,6 +237,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "groups_dialog.save": "Save",
         "groups_dialog.cancel": "Cancel",
         "common.language": "Language",
+        "common.dark_mode": "Dark mode",
         "common.export_excel": "Export to Excel",
         "common.excel_filter": "Excel files (*.xlsx)",
         "onboarding.title": "Pilottelega — Sign in",
@@ -416,6 +418,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "groups_dialog.save": "Сохранить",
         "groups_dialog.cancel": "Отмена",
         "common.language": "Язык",
+        "common.dark_mode": "Тёмная тема",
         "common.export_excel": "Экспорт в Excel",
         "common.excel_filter": "Файлы Excel (*.xlsx)",
         "onboarding.title": "Pilottelega — Вход",
