@@ -38,6 +38,7 @@ from pilottelega.core.models import TargetGroup
 from pilottelega.core.removal import RemovalFilter, parse_protected
 from pilottelega.core.telegram_service import TelegramService
 from pilottelega.ui.analysis_tab import AnalysisTab
+from pilottelega.ui.dialogs_picker import DialogsPickerDialog
 from pilottelega.ui.group_tab import GroupTab
 from pilottelega.ui.groups_dialog import GroupsDialog
 from pilottelega.ui.history_tab import HistoryTab
@@ -73,6 +74,9 @@ class MainWindow(QMainWindow):
         self.groups_menu = self.menuBar().addMenu("")
         self.manage_groups_action = self.groups_menu.addAction("")
         self.manage_groups_action.triggered.connect(self._open_groups_dialog)
+        # Import depuis les discussions du compte : seul moyen de désigner un groupe privé.
+        self.import_dialogs_action = self.groups_menu.addAction("")
+        self.import_dialogs_action.triggered.connect(self._on_import_dialogs)
         # Menu Compte : changer de clés d'accès (efface clés + session locales).
         self.account_menu = self.menuBar().addMenu("")
         self.reset_credentials_action = self.account_menu.addAction("")
@@ -102,7 +106,10 @@ class MainWindow(QMainWindow):
         self.links_label = QLabel()
         layout.addWidget(self.links_label)
         self.links_edit = QPlainTextEdit()
-        self.links_edit.setPlaceholderText("@groupe1\nt.me/groupe2\nhttps://t.me/groupe3")
+        # Un ID numérique désigne un groupe privé (sans @pseudo) : cf. « Importer mes discussions ».
+        self.links_edit.setPlaceholderText(
+            "@groupe1\nt.me/groupe2\nhttps://t.me/+invitation\n-1001234567890"
+        )
         self.links_edit.setMaximumHeight(120)
         # Pré-remplit avec les groupes enregistrés (plus besoin de les recoller à chaque fois).
         if self._saved_groups:
@@ -209,6 +216,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(tr("app.title"))
         self.groups_menu.setTitle(tr("menu.groups"))
         self.manage_groups_action.setText(tr("menu.manage_groups"))
+        self.import_dialogs_action.setText(tr("menu.import_dialogs"))
         self.account_menu.setTitle(tr("menu.account"))
         self.reset_credentials_action.setText(tr("menu.reset_credentials"))
         self.dark_check.setText(tr("common.dark_mode"))
@@ -240,6 +248,45 @@ class MainWindow(QMainWindow):
             self._saved_groups = dialog.groups()
             preferences.save_groups(self._saved_groups)
             self.links_edit.setPlainText("\n".join(self._saved_groups))
+
+    @asyncSlot()
+    async def _on_import_dialogs(self) -> None:
+        """Liste les discussions du compte et ajoute celles cochées (groupes privés inclus).
+
+        Les groupes privés n'ayant pas de ``@pseudo``, ils sont enregistrés sous leur ID
+        numérique : c'est la seule référence exploitable par Telegram.
+        """
+        self.import_dialogs_action.setEnabled(False)
+        self.status.setText(tr("main.dialogs_loading"))
+        try:
+            dialogs = await self.service.list_dialogs()
+        except Exception as exc:  # noqa: BLE001 - message clair, l'app reste utilisable
+            logger.warning("Liste des discussions indisponible: %s", type(exc).__name__)
+            self.status.setText(tr("main.dialogs_error", error=str(exc) or type(exc).__name__))
+            return
+        finally:
+            self.import_dialogs_action.setEnabled(True)
+
+        if not dialogs:
+            self.status.setText(tr("main.dialogs_none"))
+            return
+
+        picker = DialogsPickerDialog(dialogs, self)
+        if not picker.exec():
+            return
+        existing = {line.strip() for line in self.links_edit.toPlainText().splitlines()}
+        added = [identifier for identifier in picker.selected() if identifier not in existing]
+        if not added:
+            self.status.setText(tr("main.dialogs_added", count=0))
+            return
+        lines = [
+            line.strip() for line in self.links_edit.toPlainText().splitlines() if line.strip()
+        ]
+        lines.extend(added)
+        self.links_edit.setPlainText("\n".join(lines))
+        self._saved_groups = lines
+        preferences.save_groups(lines)
+        self.status.setText(tr("main.dialogs_added", count=len(added)))
 
     @asyncSlot()
     async def _on_reset_credentials(self) -> None:

@@ -58,6 +58,38 @@ def normalize_link(raw: str) -> str | None:
     return None
 
 
+def entity_ref(identifier: str) -> str | int:
+    """Convertit un identifiant en référence acceptée par Telethon.
+
+    Un identifiant **numérique** doit être passé en ``int`` : sous forme de chaîne, Telethon
+    le prendrait pour un numéro de téléphone et échouerait à trouver le groupe. C'est le cas
+    des groupes **privés** (sans ``@pseudo``), identifiés uniquement par leur ID.
+    """
+    s = identifier.strip()
+    if s.lstrip("-").isdigit():
+        return int(s)
+    return s
+
+
+def invite_hash(identifier: str) -> str | None:
+    """Extrait le jeton d'un lien d'invitation privé, ou ``None`` si ce n'en est pas un.
+
+    Accepte ``+hash``, ``joinchat/hash`` et leurs formes complètes (``https://t.me/+hash``).
+    """
+    s = identifier.strip()
+    low = s.lower()
+    for prefix in _URL_PREFIXES:
+        if low.startswith(prefix):
+            s = s[len(prefix) :]
+            break
+    s = s.strip("/")
+    if s.startswith("+"):
+        return s[1:] or None
+    if s.lower().startswith("joinchat/"):
+        return s[len("joinchat/") :] or None
+    return None
+
+
 def parse_links(text: str) -> tuple[list[str], list[str]]:
     """Découpe un bloc multi-lignes (1 lien/ligne).
 

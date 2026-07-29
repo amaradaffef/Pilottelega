@@ -20,6 +20,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "app.title": "Pilottelega",
         "menu.groups": "Mes groupes",
         "menu.manage_groups": "Gérer mes groupes…",
+        "menu.import_dialogs": "Importer mes discussions (groupes privés)…",
         "menu.account": "Compte",
         "menu.reset_credentials": "Changer de clés d'accès…",
         "reset.title": "Changer de clés d'accès",
@@ -35,13 +36,27 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "groups_dialog.title": "Mes groupes enregistrés",
         "groups_dialog.intro": (
             "Définissez vos groupes une fois pour toutes. Ils seront pré-remplis à chaque "
-            "lancement. Ajoutez un lien, ou collez-en plusieurs d'un coup."
+            "lancement. Ajoutez un lien, ou collez-en plusieurs d'un coup. Pour un groupe "
+            "<b>privé</b> (sans @pseudo), utilisez « Mes groupes → Importer mes discussions »."
         ),
-        "groups_dialog.input_placeholder": "@groupe ou https://t.me/groupe",
+        "groups_dialog.input_placeholder": "@groupe, https://t.me/groupe, t.me/+invitation ou ID",
         "groups_dialog.add": "Ajouter",
         "groups_dialog.remove": "Retirer la sélection",
         "groups_dialog.save": "Enregistrer",
         "groups_dialog.cancel": "Annuler",
+        # Sélecteur des discussions (groupes publics et privés du compte connecté)
+        "dialogs.title": "Mes discussions Telegram",
+        "dialogs.intro": (
+            "Cochez les groupes à analyser. Les groupes <b>privés</b> n'ont pas de @pseudo : "
+            "ils sont enregistrés sous leur identifiant numérique."
+        ),
+        "dialogs.search": "Rechercher un groupe…",
+        "dialogs.private_only": "Privés uniquement",
+        "dialogs.hide_channels": "Masquer les canaux",
+        "dialogs.add": "Ajouter la sélection",
+        "dialogs.private": "privé",
+        "dialogs.channel": "canal",
+        "dialogs.members": "{count} membres",
         "common.language": "Langue",
         "common.dark_mode": "Mode sombre",
         "common.export_excel": "Exporter en Excel",
@@ -90,6 +105,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "main.rescan_running": "Mise à jour des groupes après retrait…",
         "main.rescan_done": "Groupe(s) mis à jour après retrait : {count}.",
         "main.ignored_lines": " {count} ligne(s) ignorée(s) : {lines}",
+        "main.dialogs_loading": "Chargement de vos discussions Telegram…",
+        "main.dialogs_none": "Aucun groupe ni canal trouvé sur ce compte.",
+        "main.dialogs_error": "Impossible de lister vos discussions : {error}",
+        "main.dialogs_added": "{count} groupe(s) ajouté(s) à la liste.",
+        "errors.invite_not_member": (
+            "Groupe privé : ce compte n'en est pas membre. Rejoignez-le d'abord dans Telegram "
+            "avec ce lien d'invitation, puis relancez la récupération."
+        ),
         "main.analysis_tab": "Analyse",
         "main.removal_tab": "Retirer",
         "main.history_tab": "Historique",
@@ -215,6 +238,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "app.title": "Pilottelega",
         "menu.groups": "My groups",
         "menu.manage_groups": "Manage my groups…",
+        "menu.import_dialogs": "Import my chats (private groups)…",
         "menu.account": "Account",
         "menu.reset_credentials": "Change access keys…",
         "reset.title": "Change access keys",
@@ -229,13 +253,26 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "groups_dialog.title": "My saved groups",
         "groups_dialog.intro": (
             "Set your groups once. They will be pre-filled on every launch. "
-            "Add a link, or paste several at once."
+            "Add a link, or paste several at once. For a <b>private</b> group (no @username), "
+            'use "My groups → Import my chats".'
         ),
-        "groups_dialog.input_placeholder": "@group or https://t.me/group",
+        "groups_dialog.input_placeholder": "@group, https://t.me/group, t.me/+invite or ID",
         "groups_dialog.add": "Add",
         "groups_dialog.remove": "Remove selected",
         "groups_dialog.save": "Save",
         "groups_dialog.cancel": "Cancel",
+        "dialogs.title": "My Telegram chats",
+        "dialogs.intro": (
+            "Tick the groups to analyse. <b>Private</b> groups have no @username: "
+            "they are saved under their numeric ID."
+        ),
+        "dialogs.search": "Search a group…",
+        "dialogs.private_only": "Private only",
+        "dialogs.hide_channels": "Hide channels",
+        "dialogs.add": "Add selection",
+        "dialogs.private": "private",
+        "dialogs.channel": "channel",
+        "dialogs.members": "{count} members",
         "common.language": "Language",
         "common.dark_mode": "Dark mode",
         "common.export_excel": "Export to Excel",
@@ -279,6 +316,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "main.rescan_running": "Refreshing groups after removal…",
         "main.rescan_done": "Group(s) refreshed after removal: {count}.",
         "main.ignored_lines": " {count} line(s) ignored: {lines}",
+        "main.dialogs_loading": "Loading your Telegram chats…",
+        "main.dialogs_none": "No group or channel found on this account.",
+        "main.dialogs_error": "Cannot list your chats: {error}",
+        "main.dialogs_added": "{count} group(s) added to the list.",
+        "errors.invite_not_member": (
+            "Private group: this account is not a member. Join it first in Telegram with that "
+            "invite link, then fetch again."
+        ),
         "main.analysis_tab": "Analysis",
         "main.removal_tab": "Remove",
         "main.history_tab": "History",
@@ -395,6 +440,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "app.title": "Pilottelega",
         "menu.groups": "Мои группы",
         "menu.manage_groups": "Управлять группами…",
+        "menu.import_dialogs": "Импортировать мои чаты (приватные группы)…",
         "menu.account": "Аккаунт",
         "menu.reset_credentials": "Сменить ключи доступа…",
         "reset.title": "Сменить ключи доступа",
@@ -410,13 +456,26 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "groups_dialog.title": "Мои сохранённые группы",
         "groups_dialog.intro": (
             "Задайте группы один раз. Они будут подставляться при каждом запуске. "
-            "Добавьте ссылку или вставьте сразу несколько."
+            "Добавьте ссылку или вставьте сразу несколько. Для <b>приватной</b> группы "
+            "(без @имени) используйте «Мои группы → Импортировать мои чаты»."
         ),
-        "groups_dialog.input_placeholder": "@группа или https://t.me/группа",
+        "groups_dialog.input_placeholder": "@группа, https://t.me/группа, t.me/+приглашение или ID",
         "groups_dialog.add": "Добавить",
         "groups_dialog.remove": "Удалить выбранное",
         "groups_dialog.save": "Сохранить",
         "groups_dialog.cancel": "Отмена",
+        "dialogs.title": "Мои чаты Telegram",
+        "dialogs.intro": (
+            "Отметьте группы для анализа. У <b>приватных</b> групп нет @имени: "
+            "они сохраняются по числовому идентификатору."
+        ),
+        "dialogs.search": "Поиск группы…",
+        "dialogs.private_only": "Только приватные",
+        "dialogs.hide_channels": "Скрыть каналы",
+        "dialogs.add": "Добавить выбранное",
+        "dialogs.private": "приватная",
+        "dialogs.channel": "канал",
+        "dialogs.members": "участников: {count}",
         "common.language": "Язык",
         "common.dark_mode": "Тёмная тема",
         "common.export_excel": "Экспорт в Excel",
@@ -461,6 +520,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "main.rescan_running": "Обновление групп после удаления…",
         "main.rescan_done": "Групп обновлено после удаления: {count}.",
         "main.ignored_lines": " Пропущено строк: {count}: {lines}",
+        "main.dialogs_loading": "Загрузка ваших чатов Telegram…",
+        "main.dialogs_none": "На этом аккаунте не найдено групп или каналов.",
+        "main.dialogs_error": "Не удалось получить список чатов: {error}",
+        "main.dialogs_added": "Добавлено групп: {count}.",
+        "errors.invite_not_member": (
+            "Приватная группа: этот аккаунт не является участником. Сначала вступите в неё "
+            "в Telegram по ссылке-приглашению, затем повторите получение."
+        ),
         "main.analysis_tab": "Анализ",
         "main.removal_tab": "Удалить",
         "main.history_tab": "История",

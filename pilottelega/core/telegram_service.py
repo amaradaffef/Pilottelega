@@ -16,7 +16,9 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
+from pilottelega.app.i18n import tr
 from pilottelega.app.logging_conf import get_logger
+from pilottelega.core.link_parser import entity_ref, invite_hash
 from pilottelega.core.models import AccessStatus, Member, TargetGroup
 from pilottelega.core.removal import Removal, RemovalResult
 
@@ -28,6 +30,29 @@ class LoginStep(StrEnum):
 
     CONNECTED = "connected"
     PASSWORD_REQUIRED = "password_required"
+
+
+class NotAMemberError(Exception):
+    """Lien d'invitation valide mais le compte connecté n'appartient pas au groupe privé.
+
+    Principe II : on ne rejoint jamais un groupe à la place de l'utilisateur ; on l'informe.
+    """
+
+
+@dataclass(frozen=True)
+class DialogInfo:
+    """Un groupe/canal auquel le compte connecté appartient (public **ou** privé)."""
+
+    identifier: str  # « @pseudo » si public, sinon l'ID numérique (groupes privés)
+    title: str
+    is_private: bool  # sans @pseudo public → accessible uniquement par ID/invitation
+    is_channel: bool = False  # canal de diffusion (vs groupe de discussion)
+    members_count: int | None = None
+
+    @property
+    def label(self) -> str:
+        """Libellé affiché dans le sélecteur : titre + identifiant technique."""
+        return f"{self.title} — {self.identifier}"
 
 
 @dataclass
@@ -142,6 +167,7 @@ class TelegramService:
         session_path: str,
         client_factory: Callable[[], Any] | None = None,
         about_fetcher: Callable[[Any, int], Any] | None = None,
+        invite_checker: Callable[[Any, str], Any] | None = None,
     ) -> None:
         self.api_id = api_id
         self.api_hash = api_hash
@@ -149,6 +175,8 @@ class TelegramService:
         self._client_factory = client_factory or self._default_client_factory
         # Récupérateur de bio injectable (testable sans Telethon).
         self._about_fetcher = about_fetcher or self._default_about_fetcher
+        # Vérificateur de lien d'invitation privé injectable (testable sans Telethon).
+        self._invite_checker = invite_checker or self._default_invite_checker
         self._client: Any | None = None
         self._phone: str | None = None
         self._me: Any | None = None
@@ -168,6 +196,79 @@ class TelegramService:
 
         full = await client(GetFullUserRequest(user_id))
         return getattr(full.full_user, "about", None)
+
+    async def _default_invite_checker(self, client: Any, invite: str) -> Any:
+        """Interroge Telegram sur un lien d'invitation privé (sans jamais rejoindre le groupe).
+
+        Retourne l'entité du groupe si le compte connecté en est **déjà membre**
+        (``ChatInviteAlready``), sinon ``None`` (aperçu seul : il faut d'abord rejoindre).
+        """
+        from telethon.tl.functions.messages import CheckChatInviteRequest
+
+        result = await client(CheckChatInviteRequest(invite))
+        return getattr(result, "chat", None)
+
+    async def _resolve_entity(self, client: Any, identifier: str) -> Any:
+        """Résout un groupe **public ou privé** en entité Telethon.
+
+        Trois formes acceptées :
+
+        1. ``@pseudo`` → résolution publique classique ;
+        2. ID numérique (groupes/canaux **privés**) → converti en ``int`` (une chaîne serait
+           interprétée comme un numéro de téléphone par Telethon) ;
+        3. lien d'invitation ``+hash`` / ``joinchat/hash`` → ``CheckChatInviteRequest``, qui ne
+           fonctionne que si le compte est déjà membre (sinon ``NotAMemberError``).
+        """
+        invite = invite_hash(identifier)
+        if invite is not None:
+            chat = await self._invite_checker(client, invite)
+            if chat is None:
+                raise NotAMemberError(tr("errors.invite_not_member"))
+            return chat
+        return await client.get_entity(entity_ref(identifier))
+
+    async def list_dialogs(self) -> list[DialogInfo]:
+        """Liste les groupes et canaux du compte connecté, **privés compris**.
+
+        Un groupe privé n'a pas de ``@pseudo`` : il n'est atteignable que par son ID. Passer
+        par les discussions de l'utilisateur est le seul moyen fiable de le désigner (et cela
+        met aussi son entité en cache dans la session Telethon).
+        """
+        client = await self._ensure_client()
+        dialogs: list[DialogInfo] = []
+        async for dialog in client.iter_dialogs():
+            is_group = bool(getattr(dialog, "is_group", False))
+            is_channel = bool(getattr(dialog, "is_channel", False))
+            if not (is_group or is_channel):
+                continue  # conversations individuelles : pas de liste de membres
+            entity = getattr(dialog, "entity", None)
+            username = getattr(entity, "username", None)
+            raw_id = getattr(dialog, "id", None)
+            if raw_id is None:
+                raw_id = getattr(entity, "id", None)
+            if username:
+                identifier = f"@{username}"
+            elif raw_id is not None:
+                identifier = str(raw_id)
+            else:
+                continue  # ni pseudo ni ID : rien d'exploitable
+            title = getattr(dialog, "name", None) or getattr(entity, "title", None) or identifier
+            dialogs.append(
+                DialogInfo(
+                    identifier=identifier,
+                    title=title,
+                    is_private=not username,
+                    # « broadcast » = canal de diffusion ; un supergroupe privé reste un groupe.
+                    is_channel=bool(getattr(entity, "broadcast", False)),
+                    members_count=getattr(entity, "participants_count", None),
+                )
+            )
+        logger.info(
+            "Discussions listées: %s (dont privées: %s)",
+            len(dialogs),
+            sum(d.is_private for d in dialogs),
+        )
+        return dialogs
 
     async def _ensure_client(self) -> Any:
         """Crée et connecte le client si nécessaire, puis le retourne."""
@@ -306,15 +407,16 @@ class TelegramService:
     ) -> TargetGroup:
         """Récupère les membres d'un groupe et en déduit le ``AccessStatus``.
 
-        ``thorough`` active une récupération complète (recherche par lettres) pour remonter
-        davantage de membres sur les gros groupes. ``fetch_descriptions`` complète la bio de
-        chaque membre (lent). N'élève jamais d'exception sur un accès refusé : encode le statut
-        (FR-008/010/011). L'échec d'un groupe n'affecte pas les autres (FR-007).
+        Accepte un groupe **public** (``@pseudo``) comme **privé** (ID numérique ou lien
+        d'invitation). ``thorough`` active une récupération complète (recherche par lettres)
+        pour remonter davantage de membres sur les gros groupes. ``fetch_descriptions`` complète
+        la bio de chaque membre (lent). N'élève jamais d'exception sur un accès refusé : encode
+        le statut (FR-008/010/011). L'échec d'un groupe n'affecte pas les autres (FR-007).
         """
         client = await self._ensure_client()
         group = TargetGroup(raw_input=identifier, identifier=identifier)
         try:
-            entity = await client.get_entity(identifier)
+            entity = await self._resolve_entity(client, identifier)
             group.title = getattr(entity, "title", None)
             group.handle = getattr(entity, "username", None)
 
@@ -441,7 +543,8 @@ class TelegramService:
                 try:
                     entity = entity_cache.get(removal.group_identifier)
                     if entity is None:
-                        entity = await client.get_entity(removal.group_identifier)
+                        # Résolution unifiée : @pseudo, ID de groupe privé ou lien d'invitation.
+                        entity = await self._resolve_entity(client, removal.group_identifier)
                         entity_cache[removal.group_identifier] = entity
                     await self._remove_one(
                         entity, removal.user_id, ban, removal.access_hash, removal.username
