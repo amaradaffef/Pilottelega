@@ -10,6 +10,14 @@ présent dans plusieurs (et lesquels).
 fenêtre, langue mémorisée). **Export Excel** : chaque onglet de groupe et l'onglet Analyse
 exportent leurs données en `.xlsx`.
 
+📘 **Guide utilisateur en russe** : [`docs/guide-ru.md`](docs/guide-ru.md) — *Руководство
+пользователя на русском языке* (installation, connexion, groupes publics **et privés**,
+analyse, retraits, export).
+
+**Groupes privés** : un groupe sans `@pseudo` s'ajoute via **Mes groupes → Importer mes
+discussions** (il est enregistré sous son ID numérique). Une invitation `t.me/+…` ne
+fonctionne que si le compte est **déjà membre** du groupe.
+
 ## Conformité & confidentialité
 
 - L'application ne lit **que** ce que votre compte peut légitimement consulter et **affiche
